@@ -735,8 +735,16 @@ tr:hover td { background: var(--surface); }
             <input type="text" class="form-control" id="eng-role" placeholder="현장소장">
           </div>
           <div class="form-group">
-            <label class="form-label">건축/품질 등급</label>
-            <select class="form-control" id="eng-grade">
+            <label class="form-label">건축분야 등급</label>
+            <select class="form-control" id="eng-arch-grade">
+              <option value="">-</option>
+              <option>초급</option><option>중급</option><option>고급</option><option>특급</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">품질분야 등급</label>
+            <select class="form-control" id="eng-qual-grade">
+              <option value="">-</option>
               <option>초급</option><option>중급</option><option>고급</option><option>특급</option>
             </select>
           </div>
@@ -1779,7 +1787,6 @@ async function saveEngineer() {
     입사일: document.getElementById("eng-hiredate").value,
     비고: document.getElementById("eng-note").value,
   };
-  if (!body.사번) { toast("사번은 필수입니다", "error"); return; }
   if (!body.사번) { toast("사번은 필수입니다", "error"); return; }
   if (!body.이름) { toast("이름은 필수입니다", "error"); return; }
 
