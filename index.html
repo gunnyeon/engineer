@@ -482,7 +482,7 @@ tr:hover td { background: var(--surface); }
           </div>
           <div class="table-wrap">
             <table id="top-engineers-table">
-              <thead><tr><th>순위</th><th>이름</th><th>소속부서</th><th>건축등급</th><th>품질등급</th><th>총경력연수</th><th>상세</th></tr></thead>
+              <thead><tr><th>순위</th><th>사번</th><th>이름</th><th>소속부서</th><th>건축등급</th><th>품질등급</th><th>총경력연수</th><th>상세</th></tr></thead>
               <tbody id="top-engineers-body"></tbody>
             </table>
           </div>
@@ -512,7 +512,7 @@ tr:hover td { background: var(--surface); }
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>이름</th><th>소속부서</th><th>직급/직책</th><th>건축등급</th><th>품질등급</th><th>총경력</th><th>자격증</th><th>연락처</th><th>관리</th></tr></thead>
+              <thead><tr><th>사번</th><th>이름</th><th>소속부서</th><th>직급/직책</th><th>건축등급</th><th>품질등급</th><th>총경력</th><th>자격증</th><th>연락처</th><th>관리</th></tr></thead>
               <tbody id="engineers-table-body">
                 <tr><td colspan="8" class="loading-overlay"><div class="spinner"></div> 로딩 중...</td></tr>
               </tbody>
@@ -692,6 +692,10 @@ tr:hover td { background: var(--surface); }
       <div id="eng-tab-basic" class="tab-content active">
         <input type="hidden" id="eng-id">
         <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">사번 <span style="color:var(--danger)">*</span></label>
+            <input type="text" class="form-control" id="eng-empno" placeholder="EMP001" style="font-family:monospace;">
+          </div>
           <div class="form-group">
             <label class="form-label">이름 <span style="color:var(--danger)">*</span></label>
             <input type="text" class="form-control" id="eng-name" placeholder="홍길동">
@@ -931,7 +935,7 @@ tr:hover td { background: var(--surface); }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ⚙️  설정 — Apps Script 배포 후 URL을 여기에 입력
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const API_URL = "https://script.google.com/macros/s/AKfycbwZjQDPxv7oKAbNBgZleRO9gBdc-5V1F0hn8Df7NsjTycx6k9HZbde4KtlSpuV_ArXkCg/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycby6d0BCy-tOs4IyqlgMmBB9IwRQP1DAsQLa1OB3S12mNOCXU3BAZcPhTd9-CeHHorRo5g/exec";
 // 예: "https://script.google.com/macros/s/AKfyc.../exec"
 
 // 분야별 기술등급 배지 렌더링
@@ -1053,6 +1057,7 @@ function processExcelFile(file) {
       if (ws1) {
         const rows = XLSX.utils.sheet_to_json(ws1, { defval: "" });
         UPLOAD_DATA.engineers = rows.map(r => ({
+          사번: String(r["사번"] || r["사번*"] || "").trim(),
           이름: String(r["이름*"] || r["이름"] || "").trim(),
           생년월일: formatExcelDate(r["생년월일"]),
           연락처: String(r["연락처"] || "").trim(),
@@ -1072,6 +1077,7 @@ function processExcelFile(file) {
       if (ws2) {
         const rows = XLSX.utils.sheet_to_json(ws2, { defval: "" });
         UPLOAD_DATA.experiences = rows.map(r => ({
+          기술인사번: String(r["기술인사번*"] || r["기술인사번"] || "").trim(),
           기술인이름: String(r["기술인이름*"] || r["기술인이름"] || "").trim(),
           프로젝트명직접입력: String(r["프로젝트명*"] || r["프로젝트명"] || "").trim(),
           발주처: String(r["발주처"] || "").trim(),
@@ -1085,7 +1091,7 @@ function processExcelFile(file) {
           담당업무: String(r["담당업무"] || "").trim(),
           공사규모금액: String(r["공사규모(억원)"] || "").trim(),
           연면적: String(r["연면적(㎡)"] || "").trim(),
-        })).filter(r => r.기술인이름 && r.프로젝트명직접입력);
+        })).filter(r => r.기술인사번 && r.프로젝트명직접입력); // 사번 필수
       }
 
       // ③ 자격증 시트
@@ -1093,12 +1099,13 @@ function processExcelFile(file) {
       if (ws3) {
         const rows = XLSX.utils.sheet_to_json(ws3, { defval: "" });
         UPLOAD_DATA.certifications = rows.map(r => ({
+          기술인사번: String(r["기술인사번*"] || r["기술인사번"] || "").trim(),
           기술인이름: String(r["기술인이름*"] || r["기술인이름"] || "").trim(),
           자격증명: String(r["자격증명*"] || r["자격증명"] || "").trim(),
           자격증번호: String(r["자격증번호"] || "").trim(),
           취득일: formatExcelDate(r["취득일"]),
           발급기관: String(r["발급기관"] || "").trim(),
-        })).filter(r => r.기술인이름 && r.자격증명);
+        })).filter(r => r.기술인사번 && r.자격증명); // 사번 필수
       }
 
       document.getElementById("file-selected-name").textContent =
@@ -1165,7 +1172,7 @@ function renderUploadPreview() {
       </thead>
       <tbody>
         ${data.map((r,i) => `<tr style="${i%2===0?'':'background:var(--surface)'}">
-          <td style="padding:8px 10px;border-bottom:1px solid var(--border);"><strong>${r.이름}</strong></td>
+          <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-family:monospace;">${r.사번||'-'}</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);"><strong>${r.이름}</strong></td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.생년월일||"-"}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.연락처||"-"}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.소속부서||"-"}</td>
@@ -1190,7 +1197,7 @@ function renderUploadPreview() {
       </thead>
       <tbody>
         ${data.map((r,i) => `<tr style="${i%2===0?'':'background:var(--surface)'}">
-          <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-weight:600;">${r.기술인이름}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-family:monospace;">${r.기술인사번||'-'}</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);font-weight:600;">${r.기술인이름}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.프로젝트명직접입력}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.발주처||"-"}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.공사위치||"-"}</td>
@@ -1214,7 +1221,7 @@ function renderUploadPreview() {
       </thead>
       <tbody>
         ${data.map((r,i) => `<tr style="${i%2===0?'':'background:var(--surface)'}">
-          <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-weight:600;">${r.기술인이름}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-family:monospace;">${r.기술인사번||'-'}</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);font-weight:600;">${r.기술인이름}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.자격증명}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.자격증번호||"-"}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.취득일||"-"}</td>
@@ -1259,17 +1266,24 @@ async function executeUpload() {
   }
 
   // ② 기술인ID 매핑 (이름 → ID)
-  let nameToId = {};
+  let empNoToId = {}, nameToId = {};
   try {
     const engineers = await api("getEngineers");
-    engineers.forEach(e => { nameToId[e["이름"]] = e["ID"]; });
+    engineers.forEach(e => {
+      if (e["사번"]) empNoToId[e["사번"]] = e["ID"];
+      nameToId[e["이름"]] = e["ID"];
+    });
   } catch(err) {}
 
-  // ③ 경력 등록 (기술인 이름 → ID 매핑)
+  // ③ 경력 등록 — 사번 우선, 이름 보조 (동명이인 대응)
   for (const e of exp) {
     try {
-      const engId = nameToId[e.기술인이름];
-      if (!engId) { failed++; errors.push(`경력 "${e.기술인이름}": 기술인을 찾을 수 없음`); continue; }
+      const engId = empNoToId[e.기술인사번];
+      if (!engId) {
+        failed++;
+        errors.push(`경력 "${e.기술인사번 || "(사번없음)"} ${e.기술인이름||""}": 사번과 일치하는 기술인 없음`);
+        continue;
+      }
       status.textContent = `경력 등록 중... (${succeeded}건 완료)`;
       await apiPost("addExperience", { ...e, 기술인ID: engId });
       succeeded++;
@@ -1282,8 +1296,12 @@ async function executeUpload() {
   // ④ 자격증 등록
   for (const c of cert) {
     try {
-      const engId = nameToId[c.기술인이름];
-      if (!engId) { failed++; errors.push(`자격증 "${c.기술인이름}": 기술인을 찾을 수 없음`); continue; }
+      const engId = empNoToId[c.기술인사번];
+      if (!engId) {
+        failed++;
+        errors.push(`자격증 "${c.기술인사번 || "(사번없음)"} ${c.기술인이름||""}": 사번과 일치하는 기술인 없음`);
+        continue;
+      }
       status.textContent = `자격증 등록 중... (${succeeded}건 완료)`;
       await apiPost("addCert", { ...c, 기술인ID: engId });
       succeeded++;
@@ -1492,6 +1510,7 @@ function renderTopEngineers(list) {
   document.getElementById("top-engineers-body").innerHTML = (list || []).map((e,i) => `
     <tr>
       <td><strong>${i+1}</strong></td>
+      <td style="font-family:monospace;font-size:12px;color:var(--text2);">${e.사번 || "-"}</td>
       <td><strong style="cursor:pointer;color:var(--primary);" onclick="openEngineerDetail('${e.id}')">${e.이름}</strong></td>
       <td>${e.소속부서 || "-"}</td>
       <td>${gradeBadge(e.건축분야등급)}</td><td>${gradeBadge(e.품질분야등급)}</td>
@@ -1542,6 +1561,7 @@ function renderEngineersTable() {
 
   document.getElementById("engineers-table-body").innerHTML = pageData.length ? pageData.map(e => `
     <tr>
+      <td style="font-family:monospace;font-size:12px;color:var(--text2);">${e["사번"] || "-"}</td>
       <td><strong style="cursor:pointer;color:var(--primary);" onclick="openEngineerDetail('${e.ID}')">${e["이름"]}</strong></td>
       <td>${e["소속부서"] || "-"}</td>
       <td>${e["직급"] || ""} / ${e["직책"] || ""}</td>
@@ -1581,6 +1601,7 @@ async function openEngineerDetail(id) {
   try {
     const eng = await api("getEngineer", { id });
     document.getElementById("eng-id").value = eng.ID;
+    document.getElementById("eng-empno").value = eng["사번"] || "";
     document.getElementById("eng-name").value = eng["이름"] || "";
     document.getElementById("eng-birth").value = eng["생년월일"] || "";
     document.getElementById("eng-phone").value = eng["연락처"] || "";
@@ -1607,7 +1628,7 @@ async function openEngineerDetail(id) {
 function openEngineerModal() {
   CURRENT_ENG_ID = null;
   document.getElementById("eng-id").value = "";
-  ["eng-name","eng-birth","eng-phone","eng-email","eng-dept","eng-role","eng-hiredate","eng-note"].forEach(id => {
+  ["eng-empno","eng-name","eng-birth","eng-phone","eng-email","eng-dept","eng-role","eng-hiredate","eng-note"].forEach(id => {
     document.getElementById(id).value = "";
   });
   document.getElementById("eng-arch-grade").value = "";
@@ -1624,6 +1645,7 @@ function openEngineerModal() {
 async function saveEngineer() {
   const id = document.getElementById("eng-id").value;
   const body = {
+    사번: document.getElementById("eng-empno").value.trim(),
     이름: document.getElementById("eng-name").value.trim(),
     생년월일: document.getElementById("eng-birth").value,
     연락처: document.getElementById("eng-phone").value,
@@ -1636,6 +1658,8 @@ async function saveEngineer() {
     입사일: document.getElementById("eng-hiredate").value,
     비고: document.getElementById("eng-note").value,
   };
+  if (!body.사번) { toast("사번은 필수입니다", "error"); return; }
+  if (!body.사번) { toast("사번은 필수입니다", "error"); return; }
   if (!body.이름) { toast("이름은 필수입니다", "error"); return; }
 
   try {
@@ -1835,9 +1859,10 @@ async function doSearch() {
       return;
     }
     area.innerHTML = `<table>
-      <thead><tr><th>이름</th><th>소속부서</th><th>건축등급</th><th>품질등급</th><th>총경력</th><th>주요공종</th><th>자격증</th><th>연락처</th><th>상세</th></tr></thead>
+      <thead><tr><th>사번</th><th>이름</th><th>소속부서</th><th>건축등급</th><th>품질등급</th><th>총경력</th><th>주요공종</th><th>자격증</th><th>연락처</th><th>상세</th></tr></thead>
       <tbody>${results.map(e => `
         <tr>
+          <td style="font-family:monospace;font-size:12px;color:var(--text2);">${e["사번"] || "-"}</td>
           <td><strong>${e["이름"]}</strong></td>
           <td>${e["소속부서"] || "-"}</td>
           <td>${gradeBadge(e["건축분야등급"])}</td><td>${gradeBadge(e["품질분야등급"])}</td>
@@ -1866,9 +1891,9 @@ function clearSearch() {
 function exportSearchResult() {
   const results = window._searchResults;
   if (!results || !results.length) { toast("검색 결과가 없습니다", "error"); return; }
-  const rows = [["이름","소속부서","건축분야등급","품질분야등급","총경력연수","주요공종","자격증수","연락처"]];
+  const rows = [["사번","이름","소속부서","건축분야등급","품질분야등급","총경력연수","주요공종","자격증수","연락처"]];
   results.forEach(e => rows.push([
-    e["이름"], e["소속부서"]||"", e["건축분야등급"]||"", e["품질분야등급"]||"",
+    e["사번"]||"", e["이름"], e["소속부서"]||"", e["건축분야등급"]||"", e["품질분야등급"]||"",
     e.총경력연수,
     [...new Set((e.경력목록||[]).map(x=>x["공종"]).filter(Boolean))].join(", "),
     (e.자격증목록||[]).length,
@@ -1948,7 +1973,8 @@ function renderReport(data) {
 
       <div class="section-title">1. 인적사항</div>
       <table>
-        <tr><th width="120">성 명</th><td>${eng["이름"]}</td><th width="120">생년월일</th><td>${eng["생년월일"] || "-"}</td></tr>
+        <tr><th width="120">사 번</th><td>${eng["사번"] || "-"}</td><th width="120">성 명</th><td>${eng["이름"]}</td></tr>
+          <tr><th>생년월일</th><td>${eng["생년월일"] || "-"}</td><th>연락처</th><td>${eng["연락처"] || "-"}</td></tr>
         <tr><th>소속부서</th><td>${eng["소속부서"] || "-"}</td><th>직 급</th><td>${eng["직급"] || "-"}</td></tr>
         <tr><th>건축분야등급</th><td><strong>${eng["건축분야등급"] || "-"}</strong></td><th>품질분야등급</th><td><strong>${eng["품질분야등급"] || "-"}</strong></td></tr>
         <tr><th>총경력연수</th><td colspan="3"><strong>${eng["총경력연수"]}년 (중복기간 제거)</strong></td></tr>
