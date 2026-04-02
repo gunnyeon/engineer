@@ -957,7 +957,7 @@ tr:hover td { background: var(--surface); }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ⚙️  설정 — Apps Script 배포 후 URL을 여기에 입력
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const API_URL = "https://script.google.com/macros/s/AKfycbxlG5a3Iwoypry8-eE_aeGllHhAcjxsuf5HjAW5JS8QuMS3yTb3UolS1X5NC4NTyA4dPQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwcYaoPageRwedwZuU2bMESw4cUcYO1YS4Yvib9KxUmsEEVbx3bStlldX_wiYrDOv7Vzw/exec";
 // 예: "https://script.google.com/macros/s/AKfyc.../exec"
 
 // 분야별 기술등급 배지 렌더링
@@ -1127,27 +1127,31 @@ function processExcelFile(file) {
         UPLOAD_DATA.experiences = rows.map(r => {
           const start = formatExcelDate(r["참여시작일*"] || r["참여시작일"]);
           const end   = formatExcelDate(r["참여종료일*"] || r["참여종료일"]);
-          let injung  = String(r["인정일수"] || "").trim();
+          // 인정일수: 직접입력 우선, 없으면 날짜 차이 자동계산
+          let injung = String(r["인정일수"] || "").trim();
           if (!injung && start && end) {
             const diff = new Date(end) - new Date(start);
             if (!isNaN(diff)) injung = String(Math.max(0, Math.round(diff/(1000*60*60*24))));
           }
+          // 공종: 구버전 템플릿 호환 (공종* → 전문분야로 매핑)
+          const 공종구버전 = String(r["공종*"] || r["공종"] || "").trim();
+          // 공사위치: 구버전 호환 (읽되 저장하지 않음)
           return {
-            기술인사번: String(r["기술인사번*"] || r["기술인사번"] || "").trim(),
-            기술인이름: String(r["기술인이름*"] || r["기술인이름"] || "").trim(),
+            기술인사번:       String(r["기술인사번*"] || r["기술인사번"] || "").trim(),
+            기술인이름:       String(r["기술인이름*"] || r["기술인이름"] || "").trim(),
             프로젝트명직접입력: String(r["프로젝트명*"] || r["프로젝트명"] || "").trim(),
-            발주처: String(r["발주처"] || "").trim(),
-            시공사: String(r["시공사"] || "").trim(),
-            참여시작일: start,
-            참여종료일: end,
-            인정일수: injung,
-            공사유형: String(r["공사종류*"] || r["공사종류"] || r["공사유형"] || "").trim(),
-            공법: String(r["공법"] || "").trim(),
-            직무분야: String(r["직무분야"] || "").trim(),
-            전문분야: String(r["전문분야"] || "").trim(),
-            책임정도: String(r["책임정도"] || "").trim(),
-            직위: String(r["직위"] || "").trim(),
-            담당업무: String(r["담당업무"] || "").trim(),
+            발주처:          String(r["발주처"] || "").trim(),
+            시공사:          String(r["시공사"] || "").trim(),
+            참여시작일:       start,
+            참여종료일:       end,
+            인정일수:        injung,
+            공사유형:        String(r["공사종류*"] || r["공사종류"] || r["공사유형"] || "").trim(),
+            공법:           String(r["공법"] || "").trim(),
+            직무분야:        String(r["직무분야"] || "").trim(),
+            전문분야:        String(r["전문분야"] || 공종구버전 || "").trim(),  // 구버전 공종 → 전문분야
+            책임정도:        String(r["책임정도"] || "").trim(),
+            직위:           String(r["직위"] || "").trim(),
+            담당업무:        String(r["담당업무"] || "").trim(),
           };
         }).filter(r => r.기술인사번 && r.프로젝트명직접입력 && r.기술인사번 !== "기술인사번*"); // 사번 필수
       }
