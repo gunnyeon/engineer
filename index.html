@@ -815,10 +815,6 @@ tr:hover td { background: var(--surface); }
               <label class="form-label">시공사</label>
               <input type="text" class="form-control" id="exp-contractor">
             </div>
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">공사위치</label>
-              <input type="text" class="form-control" id="exp-location" placeholder="서울 강남구">
-            </div>
           </div>
           <div class="form-row" style="margin-top:8px;">
             <div class="form-group" style="margin:0;">
@@ -841,13 +837,31 @@ tr:hover td { background: var(--surface); }
               </select>
             </div>
             <div class="form-group" style="margin:0;">
-              <label class="form-label">공종 *</label>
-              <select class="form-control" id="exp-worktype">
+              <label class="form-label">공법</label>
+              <input type="text" class="form-control" id="exp-gongbeop" placeholder="RC조, 철골조, 조적조 등">
+            </div>
+          </div>
+          <div class="form-row" style="margin-top:8px;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">직무분야</label>
+              <input type="text" class="form-control" id="exp-jikmu" placeholder="건축, 토목, 설비, 전기 등">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">전문분야</label>
+              <input type="text" class="form-control" id="exp-jeonmun" placeholder="구조, 마감, 골조 등">
+            </div>
+          </div>
+          <div class="form-row" style="margin-top:8px;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">책임정도</label>
+              <select class="form-control" id="exp-chaegim">
                 <option value="">선택</option>
-                <option>골조공사</option><option>구조공사</option><option>마감공사</option>
-                <option>기계설비</option><option>전기공사</option><option>토목공사</option>
-                <option>조경공사</option><option>소방설비</option><option>통신공사</option>
+                <option>책임자</option><option>보조자</option>
               </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">인정일수</label>
+              <input type="number" class="form-control" id="exp-injung" placeholder="자동계산 (직접입력 가능)" min="0">
             </div>
           </div>
           <div class="form-row" style="margin-top:8px;">
@@ -943,7 +957,7 @@ tr:hover td { background: var(--surface); }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ⚙️  설정 — Apps Script 배포 후 URL을 여기에 입력
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const API_URL = "https://script.google.com/macros/s/AKfycbxq-3wT5euKNsgCTkISezJDkLWnXsvcg7qSRM9gGfONaX9HVuBqLO4tev7Z3ql8d2wr_A/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxlG5a3Iwoypry8-eE_aeGllHhAcjxsuf5HjAW5JS8QuMS3yTb3UolS1X5NC4NTyA4dPQ/exec";
 // 예: "https://script.google.com/macros/s/AKfyc.../exec"
 
 // 분야별 기술등급 배지 렌더링
@@ -1088,7 +1102,8 @@ function processExcelFile(file) {
       // ① 기술인 기본정보 시트
       const ws1 = wb.Sheets["①기술인_기본정보"] || wb.Sheets[wb.SheetNames[0]];
       if (ws1) {
-        const rows = XLSX.utils.sheet_to_json(ws1, { defval: "" });
+        // 1~2행: 타이틀/안내, 3행: 헤더 → range 옵션으로 3행부터 읽기
+        const rows = XLSX.utils.sheet_to_json(ws1, { defval: "", range: 2 });
         UPLOAD_DATA.engineers = rows.map(r => ({
           사번: String(r["사번"] || r["사번*"] || "").trim(),
           이름: String(r["이름*"] || r["이름"] || "").trim(),
@@ -1102,35 +1117,45 @@ function processExcelFile(file) {
           품질분야등급: String(r["품질분야등급"] || "").trim(),
           입사일: formatExcelDate(r["입사일"]),
           비고: String(r["비고"] || "").trim(),
-        })).filter(r => r.이름);
+        })).filter(r => r.이름 && r.이름 !== "이름*" && r.이름 !== "이름");
       }
 
       // ② 경력 상세 시트
       const ws2 = wb.Sheets["②경력_프로젝트"] || wb.Sheets[wb.SheetNames[1]];
       if (ws2) {
-        const rows = XLSX.utils.sheet_to_json(ws2, { defval: "" });
-        UPLOAD_DATA.experiences = rows.map(r => ({
-          기술인사번: String(r["기술인사번*"] || r["기술인사번"] || "").trim(),
-          기술인이름: String(r["기술인이름*"] || r["기술인이름"] || "").trim(),
-          프로젝트명직접입력: String(r["프로젝트명*"] || r["프로젝트명"] || "").trim(),
-          발주처: String(r["발주처"] || "").trim(),
-          시공사: String(r["시공사"] || "").trim(),
-          공사위치: String(r["공사위치"] || "").trim(),
-          참여시작일: formatExcelDate(r["참여시작일*"] || r["참여시작일"]),
-          참여종료일: formatExcelDate(r["참여종료일*"] || r["참여종료일"]),
-          공사유형: String(r["공사종류*"] || r["공사종류"] || r["공사유형"] || "").trim(),
-          공종: String(r["공종*"] || r["공종"] || "").trim(),
-          직위: String(r["직위"] || "").trim(),
-          담당업무: String(r["담당업무"] || "").trim(),
-          공사규모금액: String(r["공사규모(억원)"] || "").trim(),
-          연면적: String(r["연면적(㎡)"] || "").trim(),
-        })).filter(r => r.기술인사번 && r.프로젝트명직접입력); // 사번 필수
+        const rows = XLSX.utils.sheet_to_json(ws2, { defval: "", range: 2 });
+        UPLOAD_DATA.experiences = rows.map(r => {
+          const start = formatExcelDate(r["참여시작일*"] || r["참여시작일"]);
+          const end   = formatExcelDate(r["참여종료일*"] || r["참여종료일"]);
+          let injung  = String(r["인정일수"] || "").trim();
+          if (!injung && start && end) {
+            const diff = new Date(end) - new Date(start);
+            if (!isNaN(diff)) injung = String(Math.max(0, Math.round(diff/(1000*60*60*24))));
+          }
+          return {
+            기술인사번: String(r["기술인사번*"] || r["기술인사번"] || "").trim(),
+            기술인이름: String(r["기술인이름*"] || r["기술인이름"] || "").trim(),
+            프로젝트명직접입력: String(r["프로젝트명*"] || r["프로젝트명"] || "").trim(),
+            발주처: String(r["발주처"] || "").trim(),
+            시공사: String(r["시공사"] || "").trim(),
+            참여시작일: start,
+            참여종료일: end,
+            인정일수: injung,
+            공사유형: String(r["공사종류*"] || r["공사종류"] || r["공사유형"] || "").trim(),
+            공법: String(r["공법"] || "").trim(),
+            직무분야: String(r["직무분야"] || "").trim(),
+            전문분야: String(r["전문분야"] || "").trim(),
+            책임정도: String(r["책임정도"] || "").trim(),
+            직위: String(r["직위"] || "").trim(),
+            담당업무: String(r["담당업무"] || "").trim(),
+          };
+        }).filter(r => r.기술인사번 && r.프로젝트명직접입력 && r.기술인사번 !== "기술인사번*"); // 사번 필수
       }
 
       // ③ 자격증 시트
       const ws3 = wb.Sheets["③자격증"] || wb.Sheets[wb.SheetNames[2]];
       if (ws3) {
-        const rows = XLSX.utils.sheet_to_json(ws3, { defval: "" });
+        const rows = XLSX.utils.sheet_to_json(ws3, { defval: "", range: 2 });
         UPLOAD_DATA.certifications = rows.map(r => ({
           기술인사번: String(r["기술인사번*"] || r["기술인사번"] || "").trim(),
           기술인이름: String(r["기술인이름*"] || r["기술인이름"] || "").trim(),
@@ -1138,7 +1163,7 @@ function processExcelFile(file) {
           자격증번호: String(r["자격증번호"] || "").trim(),
           취득일: formatExcelDate(r["취득일"]),
           발급기관: String(r["발급기관"] || "").trim(),
-        })).filter(r => r.기술인사번 && r.자격증명); // 사번 필수
+        })).filter(r => r.기술인사번 && r.자격증명 && r.기술인사번 !== "기술인사번*"); // 사번 필수
       }
 
       document.getElementById("file-selected-name").textContent =
@@ -1162,18 +1187,37 @@ function processExcelFile(file) {
 }
 
 function formatExcelDate(val) {
-  if (!val) return "";
+  if (!val && val !== 0) return "";
+  // Date 객체
   if (val instanceof Date) {
     const y = val.getFullYear();
     const m = String(val.getMonth()+1).padStart(2,"0");
     const d = String(val.getDate()).padStart(2,"0");
     return `${y}-${m}-${d}`;
   }
+  // 숫자(엑셀 시리얼 날짜) → JS Date 변환
+  if (typeof val === "number") {
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    const y = d.getUTCFullYear();
+    const mo = String(d.getUTCMonth()+1).padStart(2,"0");
+    const dy = String(d.getUTCDate()).padStart(2,"0");
+    return `${y}-${mo}-${dy}`;
+  }
   const s = String(val).trim();
-  // 이미 YYYY-MM-DD 형식이면 그대로
+  // YYYY-MM-DD 형식
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // YYYY-MM-DD HH:MM:SS (datetime 문자열)
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(s)) return s.slice(0, 10);
   // YYYYMMDD
   if (/^\d{8}$/.test(s)) return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
+  // 날짜 파싱 시도
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth()+1).padStart(2,"0");
+    const d = String(parsed.getDate()).padStart(2,"0");
+    return `${y}-${m}-${d}`;
+  }
   return s;
 }
 
@@ -1223,7 +1267,7 @@ function renderUploadPreview() {
     area.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;">
       <thead style="background:var(--surface);">
         <tr>
-          ${["기술인","프로젝트명","발주처","공사위치","참여기간","공사종류","공종","직위"].map(h=>
+          ${["기술인","프로젝트명","발주처","참여기간","인정일수","공사종류","공법","직무분야","전문분야","책임정도","직위"].map(h=>
             `<th style="padding:8px 10px;text-align:left;border-bottom:2px solid var(--border);font-size:11px;color:var(--text2);white-space:nowrap;">${h}</th>`
           ).join("")}
         </tr>
@@ -1233,10 +1277,13 @@ function renderUploadPreview() {
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-family:monospace;">${r.기술인사번||'-'}</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);font-weight:600;">${r.기술인이름}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.프로젝트명직접입력}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.발주처||"-"}</td>
-          <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.공사위치||"-"}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:11px;">${r.참여시작일} ~ ${r.참여종료일}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.인정일수||"-"}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);"><span class="badge badge-blue">${r.공사유형||"-"}</span></td>
-          <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.공종||"-"}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.공법||"-"}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.직무분야||"-"}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.전문분야||"-"}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.책임정도||"-"}</td>
           <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${r.직위||"-"}</td>
         </tr>`).join("")}
       </tbody>
@@ -1432,13 +1479,13 @@ function downloadTemplate() {
   XLSX.utils.book_append_sheet(wb, ws1, "①기술인_기본정보");
 
   // ── ② 경력 상세 ───────────────────────────────────
-  const h2 = ["기술인사번*","기술인이름*","프로젝트명*","발주처","시공사","공사위치","참여시작일*","참여종료일*","공사종류*","공종*","직위","담당업무","공사규모(억원)","연면적(㎡)","비고"];
-  const s2 = { 0:REQ, 1:REQ, 2:REQ, 3:OPT, 4:OPT, 5:OPT, 6:REQ, 7:REQ, 8:REQ, 9:REQ, 10:OPT, 11:OPT, 12:OPT, 13:OPT, 14:OPT,
-               widths:[14,12,22,16,16,14,13,13,14,12,12,24,14,12,18] };
+  const h2 = ["기술인사번*","기술인이름*","프로젝트명*","발주처","시공사","참여시작일*","참여종료일*","인정일수","공사종류*","공법","직무분야","전문분야","책임정도","직위","담당업무","비고"];
+  const s2 = { 0:REQ, 1:REQ, 2:REQ, 3:OPT, 4:OPT, 5:REQ, 6:REQ, 7:OPT, 8:REQ, 9:OPT, 10:OPT, 11:OPT, 12:OPT, 13:OPT, 14:OPT, 15:OPT,
+               widths:[14,12,22,16,16,13,13,10,14,12,12,12,12,12,24,18] };
   const r2 = [
-    ["EMP001","홍길동","강남 XX 주상복합","XX건설(주)","XX건설(주)","서울 강남구","2018-03-01","2021-06-30","주거복합","골조공사","현장소장","골조공사 총괄 관리","850","52000",""],
-    ["EMP001","홍길동","부산 BB 아파트","BB주택공사","CC건설","부산 해운대구","2017-06-01","2018-02-28","공동주택","골조공사","현장소장","골조공사 감리","2000","95000",""],
-    ["EMP002","김철수","판교 YY 오피스","YY부동산","ZZ건설","경기 성남시","2019-05-15","2022-08-31","업무시설","구조공사","공사팀장","고층 구조공사 관리","1200","38000",""],
+    ["EMP001","홍길동","강남 XX 주상복합","XX건설(주)","XX건설(주)","2018-03-01","2021-06-30","","주거복합","RC조","건축","골조","책임자","현장소장","골조공사 총괄 관리",""],
+    ["EMP001","홍길동","부산 BB 아파트","BB주택공사","CC건설","2017-06-01","2018-02-28","","공동주택","RC조","건축","골조","책임자","현장소장","골조공사 감리",""],
+    ["EMP002","김철수","판교 YY 오피스","YY부동산","ZZ건설","2019-05-15","2022-08-31","","업무시설","철골조","건축","구조","보조자","공사팀장","고층 구조공사 관리",""],
   ];
   const ws2 = makeSheet(h2, s2, r2,
     "🏗️  경력(프로젝트) 상세 — 기술인협회 경력증명서 기준",
@@ -1922,8 +1969,9 @@ async function loadExpList(engId) {
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
               <strong style="font-size:14px;">${e["프로젝트명직접입력"] || "-"}</strong>
-              <span class="badge badge-blue" style="margin-left:8px;">${e["공종"] || ""}</span>
-              <span class="badge badge-gray" style="margin-left:4px;">${e["공사유형"] || ""}</span>
+              <span class="badge badge-blue" style="margin-left:8px;">${e["직무분야"] || ""}</span>
+              <span class="badge badge-gray" style="margin-left:4px;">${e["전문분야"] || ""}</span>
+              <span class="badge badge-orange" style="margin-left:4px;">${e["책임정도"] || ""}</span>
             </div>
             <div style="display:flex;gap:6px;">
               <button class="btn btn-secondary btn-sm" onclick="editExp('${e["ID"]}')">수정</button>
@@ -1932,8 +1980,10 @@ async function loadExpList(engId) {
           </div>
           <div style="font-size:12px;color:var(--text2);margin-top:6px;display:flex;gap:12px;flex-wrap:wrap;">
             <span>📅 ${e["참여시작일"]} ~ ${e["참여종료일"]} (${e["기간표시"]})</span>
+            ${e["인정일수"] ? `<span>✅ 인정 ${e["인정일수"]}일</span>` : ""}
             <span>🏢 ${e["발주처"] || "-"}</span>
             <span>👤 ${e["직위"] || "-"}</span>
+            ${e["공법"] ? `<span>🔧 ${e["공법"]}</span>` : ""}
           </div>
           ${e["담당업무"] ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">업무: ${e["담당업무"]}</div>` : ""}
         </div>
@@ -1944,9 +1994,13 @@ async function loadExpList(engId) {
 
 function openExpForm() {
   document.getElementById("exp-edit-id").value = "";
-  ["exp-projname","exp-client","exp-contractor","exp-location","exp-start","exp-end","exp-duty"].forEach(id => {
+  ["exp-projname","exp-client","exp-contractor","exp-start","exp-end",
+   "exp-gongbeop","exp-jikmu","exp-jeonmun","exp-injung","exp-duty"].forEach(id => {
     document.getElementById(id).value = "";
   });
+  document.getElementById("exp-chaegim").value = "";
+  document.getElementById("exp-projtype").value = "";
+  document.getElementById("exp-pos").value = "";
   document.getElementById("exp-form").style.display = "block";
 }
 function closeExpForm() { document.getElementById("exp-form").style.display = "none"; }
@@ -1955,16 +2009,27 @@ async function saveExp() {
   const editId = document.getElementById("exp-edit-id").value;
   if (!CURRENT_ENG_ID) { toast("기술인을 먼저 저장하세요", "error"); return; }
 
+  const startVal = document.getElementById("exp-start").value;
+  const endVal = document.getElementById("exp-end").value;
+  // 인정일수 자동계산 (직접입력 없으면 날짜 차이로 계산)
+  let injungDays = document.getElementById("exp-injung").value;
+  if (!injungDays && startVal && endVal) {
+    const diff = new Date(endVal) - new Date(startVal);
+    injungDays = Math.max(0, Math.round(diff / (1000*60*60*24)));
+  }
   const body = {
     기술인ID: CURRENT_ENG_ID,
     프로젝트명직접입력: document.getElementById("exp-projname").value.trim(),
     발주처: document.getElementById("exp-client").value,
     시공사: document.getElementById("exp-contractor").value,
-    공사위치: document.getElementById("exp-location").value,
-    참여시작일: document.getElementById("exp-start").value,
-    참여종료일: document.getElementById("exp-end").value,
+    참여시작일: startVal,
+    참여종료일: endVal,
+    인정일수: injungDays,
     공사유형: document.getElementById("exp-projtype").value,
-    공종: document.getElementById("exp-worktype").value,
+    공법: document.getElementById("exp-gongbeop").value,
+    직무분야: document.getElementById("exp-jikmu").value,
+    전문분야: document.getElementById("exp-jeonmun").value,
+    책임정도: document.getElementById("exp-chaegim").value,
     직위: document.getElementById("exp-pos").value,
     담당업무: document.getElementById("exp-duty").value,
   };
@@ -1998,11 +2063,14 @@ async function editExp(id) {
     document.getElementById("exp-projname").value = exp["프로젝트명직접입력"] || "";
     document.getElementById("exp-client").value = exp["발주처"] || "";
     document.getElementById("exp-contractor").value = exp["시공사"] || "";
-    document.getElementById("exp-location").value = exp["공사위치"] || "";
     document.getElementById("exp-start").value = exp["참여시작일"] || "";
     document.getElementById("exp-end").value = exp["참여종료일"] || "";
+    document.getElementById("exp-injung").value = exp["인정일수"] || "";
     document.getElementById("exp-projtype").value = exp["공사유형"] || "";
-    document.getElementById("exp-worktype").value = exp["공종"] || "";
+    document.getElementById("exp-gongbeop").value = exp["공법"] || "";
+    document.getElementById("exp-jikmu").value = exp["직무분야"] || "";
+    document.getElementById("exp-jeonmun").value = exp["전문분야"] || "";
+    document.getElementById("exp-chaegim").value = exp["책임정도"] || "";
     document.getElementById("exp-pos").value = exp["직위"] || "";
     document.getElementById("exp-duty").value = exp["담당업무"] || "";
     document.getElementById("exp-form").style.display = "block";
@@ -2178,16 +2246,20 @@ function renderReport(data) {
 
       <div class="section-title">4. 경력 상세 (기술인협회 기준)</div>
       <table>
-        <tr><th>No</th><th>프로젝트명</th><th>발주처</th><th>시공사</th><th>위치</th><th>참여기간</th><th>공종</th><th>직위</th><th>담당업무</th></tr>
+        <tr><th>No</th><th>프로젝트명</th><th>발주처</th><th>시공사</th><th>참여기간</th><th>인정일수</th><th>공사유형</th><th>공법</th><th>직무분야</th><th>전문분야</th><th>책임정도</th><th>직위</th><th>담당업무</th></tr>
         ${exps.map((e,i)=>`
           <tr>
             <td style="text-align:center">${i+1}</td>
             <td>${e["프로젝트명직접입력"]||"-"}</td>
             <td>${e["발주처"]||"-"}</td>
             <td>${e["시공사"]||"-"}</td>
-            <td>${e["공사위치"]||"-"}</td>
             <td style="white-space:nowrap">${e["참여시작일"]}~${e["참여종료일"]}<br><small>(${e["기간표시"]})</small></td>
-            <td>${e["공종"]||"-"}</td>
+            <td style="text-align:center">${e["인정일수"]||"-"}</td>
+            <td>${e["공사유형"]||"-"}</td>
+            <td>${e["공법"]||"-"}</td>
+            <td>${e["직무분야"]||"-"}</td>
+            <td>${e["전문분야"]||"-"}</td>
+            <td>${e["책임정도"]||"-"}</td>
             <td>${e["직위"]||"-"}</td>
             <td>${e["담당업무"]||"-"}</td>
           </tr>
