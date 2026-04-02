@@ -532,20 +532,15 @@ tr:hover td { background: var(--surface); }
               <input type="text" class="form-control" id="s-name" placeholder="김건축">
             </div>
             <div class="form-group" style="margin:0;">
-              <label class="form-label">공종</label>
-              <select class="form-control" id="s-worktype">
-                <option value="">전체</option>
-                <option>골조공사</option><option>구조공사</option><option>마감공사</option>
-                <option>기계설비</option><option>전기공사</option><option>토목공사</option>
-                <option>조경공사</option><option>소방설비</option>
-              </select>
-            </div>
-            <div class="form-group" style="margin:0;">
               <label class="form-label">공사유형</label>
               <select class="form-control" id="s-projtype">
                 <option value="">전체</option>
-                <option>주거복합</option><option>공동주택</option><option>업무시설</option>
-                <option>창고시설</option><option>공공업무</option><option>플랜트</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">담당업무</label>
+              <select class="form-control" id="s-worktype">
+                <option value="">전체</option>
               </select>
             </div>
             <div class="form-group" style="margin:0;">
@@ -566,10 +561,14 @@ tr:hover td { background: var(--surface); }
               <label class="form-label">최소 경력</label>
               <input type="number" class="form-control" id="s-minexp" placeholder="5" min="0" max="50">
             </div>
-            <div class="form-group" style="margin:0;display:flex;align-items:flex-end;">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2);">
-                <input type="checkbox" id="s-hascert"> 자격증 보유자만
-              </label>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">자격증 필터</label>
+              <select class="form-control" id="s-certtype">
+                <option value="">전체</option>
+                <option value="기술사">기술사 보유자</option>
+                <option value="기사">기사 보유자</option>
+                <option value="any">자격증 보유자</option>
+              </select>
             </div>
           </div>
           <div style="display:flex;gap:10px;">
@@ -957,10 +956,25 @@ tr:hover td { background: var(--surface); }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ⚙️  설정 — Apps Script 배포 후 URL을 여기에 입력
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const API_URL = "https://script.google.com/macros/s/AKfycbyNlE9cpMiKZfXyk4Nvn9aE5aY6u_SJNEsX8CZc8KGJMN3fJJz_ptC3_MxLRTxZe_G8jg/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyqIRxwXev9I2RQ9uHveqaYXH8n-8ZkpxM9Gbd7tlfQxkQarYI12hjeEzExYTvZ1Rz-VQ/exec";
 // 예: "https://script.google.com/macros/s/AKfyc.../exec"
 
 // 분야별 기술등급 배지 렌더링
+// 날짜를 YYYY-MM-DD로 정규화 (Sun May 05... 같은 긴 형식 처리)
+function fmtDate(val) {
+  if (!val || val === "-") return "-";
+  const s = String(val).trim();
+  if (!s || s === "undefined" || s === "null") return "-";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    return d.getFullYear() + "-" +
+      String(d.getMonth()+1).padStart(2,"0") + "-" +
+      String(d.getDate()).padStart(2,"0");
+  }
+  return s.slice(0,10);
+}
+
 function gradeBadge(grade) {
   if (!grade) return '<span style="color:var(--text3);font-size:12px;">-</span>';
   const map = { 특급: "badge-특급", 고급: "badge-고급", 중급: "badge-중급", 초급: "badge-초급" };
@@ -1273,7 +1287,7 @@ function renderUploadPreview() {
         td(r.기술인사번, true) +
         `<td style="padding:7px 10px;border-bottom:1px solid var(--border);font-weight:600;">${r.기술인이름||"-"}</td>` +
         td(r.프로젝트명직접입력) + td(r.발주처) +
-        `<td style="padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:11px;">${r.참여시작일||""} ~ ${r.참여종료일||""}</td>` +
+        `<td style="padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:11px;">${fmtDate(r.참여시작일)} ~ ${fmtDate(r.참여종료일)}</td>` +
         td(r.인정일수) +
         `<td style="padding:7px 10px;border-bottom:1px solid var(--border);">${badge(r.공사유형,"badge-blue")}</td>` +
         td(r.공법) + td(r.직무분야) + td(r.전문분야) + td(r.책임정도) + td(r.직위)
@@ -1289,7 +1303,7 @@ function renderUploadPreview() {
       <tbody>${data.map((r,i) => tr(i,
         td(r.기술인사번, true) +
         `<td style="padding:7px 10px;border-bottom:1px solid var(--border);font-weight:600;">${r.기술인이름||"-"}</td>` +
-        td(r.자격증명) + td(r.자격증번호) + td(r.취득일) + td(r.발급기관)
+        td(r.자격증명) + td(r.자격증번호) + td(fmtDate(r.취득일)) + td(r.발급기관)
       )).join("")}</tbody>
     </table></div>`;
   }
@@ -1571,6 +1585,7 @@ function showPage(page) {
   else if (page === "engineers") loadEngineers();
   else if (page === "projects") loadProjects();
   else if (page === "reports") loadReportEngineers();
+  else if (page === "search") loadSearchFilters();
 
   // 모바일: 사이드바 닫기
   document.getElementById("sidebar").classList.remove("open");
@@ -1898,7 +1913,7 @@ async function loadCertList(engId) {
           <div>
             <strong>${c["자격증명"]}</strong>
             <span style="color:var(--text3);font-size:12px;margin-left:8px;">${c["자격증번호"] || ""}</span>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px;">취득일: ${c["취득일"] || "-"} | ${c["발급기관"] || ""}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">취득일: ${fmtDate(c["취득일"])} | ${c["발급기관"] || ""}</div>
           </div>
           <button class="btn btn-danger btn-sm" onclick="deleteCert('${c["ID"]}')">삭제</button>
         </div>
@@ -1963,7 +1978,7 @@ async function loadExpList(engId) {
             </div>
           </div>
           <div style="font-size:12px;color:var(--text2);margin-top:6px;display:flex;gap:12px;flex-wrap:wrap;">
-            <span>📅 ${e["참여시작일"]} ~ ${e["참여종료일"]} (${e["기간표시"]})</span>
+            <span>📅 ${fmtDate(e["참여시작일"])} ~ ${fmtDate(e["참여종료일"])} (${e["기간표시"]})</span>
             ${e["인정일수"] ? `<span>✅ 인정 ${e["인정일수"]}일</span>` : ""}
             <span>🏢 ${e["발주처"] || "-"}</span>
             <span>👤 ${e["직위"] || "-"}</span>
@@ -2072,15 +2087,40 @@ async function deleteExp(id) {
 }
 
 // ── 검색 ────────────────────────────────────────
+// 검색 필터 옵션 동적 로딩 (경력상세 시트 기반)
+async function loadSearchFilters() {
+  try {
+    const engineers = await api("getEngineers");
+    // 전체 경력 데이터 기반으로 공사유형, 담당업무 목록 수집
+    const projtypes = new Set();
+    const worktypes = new Set();
+    for (const eng of engineers) {
+      try {
+        const exps = await api("getExperiences", { engineerId: eng.ID });
+        exps.forEach(e => {
+          if (e["공사유형"]) projtypes.add(e["공사유형"]);
+          if (e["담당업무"]) worktypes.add(e["담당업무"]);
+        });
+      } catch(e) {}
+    }
+    const ptSel = document.getElementById("s-projtype");
+    ptSel.innerHTML = '<option value="">전체</option>' +
+      [...projtypes].sort().map(v=>`<option>${v}</option>`).join("");
+    const wtSel = document.getElementById("s-worktype");
+    wtSel.innerHTML = '<option value="">전체</option>' +
+      [...worktypes].sort().map(v=>`<option>${v}</option>`).join("");
+  } catch(e) {}
+}
+
 async function doSearch() {
   const params = {
     name: document.getElementById("s-name").value,
-    workType: document.getElementById("s-worktype").value,
-    projectType: document.getElementById("s-projtype").value,
+    workType: document.getElementById("s-worktype").value,   // 담당업무
+    projectType: document.getElementById("s-projtype").value, // 공사유형
     archGrade: document.getElementById("s-arch-grade").value,
     qualGrade: document.getElementById("s-qual-grade").value,
     minExp: document.getElementById("s-minexp").value,
-    hasCert: document.getElementById("s-hascert").checked ? "1" : "",
+    certType: document.getElementById("s-certtype").value,
     sortBy: "exp"
   };
   const area = document.getElementById("search-results");
@@ -2092,8 +2132,21 @@ async function doSearch() {
       area.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>검색 결과가 없습니다</p></div>';
       return;
     }
+    // 담당업무별 경력기간 계산
+    results.forEach(e => {
+      const 업무맵 = {};
+      (e.경력목록||[]).forEach(exp => {
+        const 업무 = exp["담당업무"] || "-";
+        const 개월 = Number(exp["기간개월"]||0);
+        업무맵[업무] = (업무맵[업무]||0) + 개월;
+      });
+      e._업무경력 = Object.entries(업무맵)
+        .sort((a,b)=>b[1]-a[1])
+        .map(([k,v])=>`${k}(${Math.round(v/12*10)/10}년)`)
+        .slice(0,2).join(", ");
+    });
     area.innerHTML = `<table>
-      <thead><tr><th>사번</th><th>이름</th><th>소속부서</th><th>건축등급</th><th>품질등급</th><th>총경력</th><th>주요공종</th><th>자격증</th><th>연락처</th><th>상세</th></tr></thead>
+      <thead><tr><th>사번</th><th>이름</th><th>소속부서</th><th>건축등급</th><th>품질등급</th><th>총경력</th><th>담당업무별경력</th><th>자격증</th><th>연락처</th><th>상세</th></tr></thead>
       <tbody>${results.map(e => `
         <tr>
           <td style="font-family:monospace;font-size:12px;color:var(--text2);">${e["사번"] || "-"}</td>
@@ -2101,7 +2154,7 @@ async function doSearch() {
           <td>${e["소속부서"] || "-"}</td>
           <td>${gradeBadge(e["건축분야등급"])}</td><td>${gradeBadge(e["품질분야등급"])}</td>
           <td><strong>${e.총경력연수}년</strong></td>
-          <td>${[...new Set((e.경력목록||[]).map(x=>x["공종"]).filter(Boolean))].slice(0,2).join(", ") || "-"}</td>
+          <td style="font-size:12px;">${e._업무경력 || "-"}</td>
           <td>${(e.자격증목록||[]).length > 0 ? `<span class="badge badge-green">✓ ${e.자격증목록.length}건</span>` : "-"}</td>
           <td>${e["연락처"] || "-"}</td>
           <td><button class="btn btn-secondary btn-sm" onclick="openEngineerDetail('${e.ID}');showPage('engineers')">상세</button></td>
@@ -2116,8 +2169,7 @@ async function doSearch() {
 
 function clearSearch() {
   ["s-name","s-minexp"].forEach(id => document.getElementById(id).value = "");
-  ["s-worktype","s-projtype","s-arch-grade","s-qual-grade"].forEach(id => document.getElementById(id).value = "");
-  document.getElementById("s-hascert").checked = false;
+  ["s-worktype","s-projtype","s-arch-grade","s-qual-grade","s-certtype"].forEach(id => document.getElementById(id).value = "");
   document.getElementById("search-results").innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>검색 조건을 입력하고 검색 버튼을 누르세요</p></div>';
   document.getElementById("search-count").textContent = "";
 }
@@ -2237,7 +2289,7 @@ function renderReport(data) {
             <td>${e["프로젝트명직접입력"]||"-"}</td>
             <td>${e["발주처"]||"-"}</td>
             <td>${e["시공사"]||"-"}</td>
-            <td style="white-space:nowrap">${e["참여시작일"]}~${e["참여종료일"]}<br><small>(${e["기간표시"]})</small></td>
+            <td style="white-space:nowrap">${fmtDate(e["참여시작일"])}~${fmtDate(e["참여종료일"])}<br><small>(${e["기간표시"]})</small></td>
             <td style="text-align:center">${e["인정일수"]||"-"}</td>
             <td>${e["공사유형"]||"-"}</td>
             <td>${e["공법"]||"-"}</td>
