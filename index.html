@@ -1080,7 +1080,7 @@ tr:hover td { background: var(--surface); }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ⚙️  설정 — Apps Script 배포 후 URL을 여기에 입력
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const API_URL = "https://script.google.com/macros/s/AKfycbxMim_sd931NmtBfoaxcL4V9B0AESxs-QahB9wk7k5ZKJxIkfSwflrs8jupkqJWxakazw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxVcmdxtLgItwgob-4JCTcvWuWIj4rT_a8kIDGmaE6heMXTS19AiaOg3IhYy3cDaeSG/exec";
 // 예: "https://script.google.com/macros/s/AKfyc.../exec"
 
 // 분야별 기술등급 배지 렌더링
@@ -2385,24 +2385,25 @@ async function doSearch() {
       area.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>검색 결과가 없습니다</p></div>';
       return;
     }
-    // 담당업무별 경력기간 계산 (기간개월 or 날짜 차이로 계산)
+    // 담당업무별 경력기간 계산 (인정일수 기반 — 총경력과 동일 방식)
     results.forEach(e => {
       const 업무맵 = {};
       (e.경력목록||[]).forEach(exp => {
         const 업무 = exp["담당업무"] || "-";
-        let 개월 = Number(exp["기간개월"]||0);
-        // 기간개월이 없으면 날짜 차이로 계산
-        if (!개월 && exp["참여시작일"] && exp["참여종료일"]) {
-          const s = new Date(exp["참여시작일"]);
-          const e2 = new Date(exp["참여종료일"]);
-          개월 = Math.max(0, (e2 - s) / (1000*60*60*24*30.44));
+        let 일수 = parseInt(exp["인정일수"]);
+        if (isNaN(일수) || 일수 <= 0) {
+          // 인정일수 없으면 날짜 차이로 계산
+          if (exp["참여시작일"] && exp["참여종료일"]) {
+            const diff = new Date(exp["참여종료일"]) - new Date(exp["참여시작일"]);
+            일수 = Math.max(0, Math.round(diff / (1000*60*60*24)));
+          } else { 일수 = 0; }
         }
-        업무맵[업무] = (업무맵[업무]||0) + 개월;
+        업무맵[업무] = (업무맵[업무]||0) + 일수;
       });
       e._업무경력 = Object.entries(업무맵)
         .filter(([k]) => k !== "-")
         .sort((a,b)=>b[1]-a[1])
-        .map(([k,v])=>`${k}(${Math.round(v/12*10)/10}년)`)
+        .map(([k,v])=>`${k}(${Math.round(v/365.25*10)/10}년)`)
         .slice(0,3).join(" / ");
     });
     area.innerHTML = `<table>
