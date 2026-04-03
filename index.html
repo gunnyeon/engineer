@@ -352,14 +352,15 @@ tr:hover td { background: var(--surface); }
 /* ── PDF 미리보기 ─────────────────────── */
 #pdf-preview {
   font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
-  padding: 40px; background: #fff; color: #000; max-width: 760px;
-  margin: 0 auto; font-size: 12px;
+  padding: 20px 24px; background: #fff; color: #000;
+  width: 794px; margin: 0 auto; font-size: 9.5px; box-sizing: border-box;
 }
-#pdf-preview h1 { font-size: 20px; text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 24px; }
-#pdf-preview .section-title { font-size: 14px; font-weight: 700; background: #f0f0f0; padding: 6px 10px; margin: 16px 0 8px; }
-#pdf-preview table { width: 100%; border-collapse: collapse; }
-#pdf-preview table td, #pdf-preview table th { border: 1px solid #ccc; padding: 6px 8px; font-size: 11.5px; }
-#pdf-preview table th { background: #e8e8e8; font-weight: 700; }
+#pdf-preview h1 { font-size: 15px; text-align: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 12px; }
+#pdf-preview .section-title { font-size: 10px; font-weight: 700; background: #f0f0f0; padding: 3px 8px; margin: 8px 0 4px; }
+#pdf-preview table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+#pdf-preview table td, #pdf-preview table th { border: 1px solid #bbb; padding: 3px 4px; font-size: 8.5px; word-break: break-all; overflow: hidden; }
+#pdf-preview table th { background: #e8e8e8; font-weight: 700; text-align: center; }
+#pdf-preview .detail-table th, #pdf-preview .detail-table td { font-size: 7.5px; padding: 2px 3px; }
 </style>
 </head>
 <body>
@@ -420,8 +421,8 @@ tr:hover td { background: var(--surface); }
 
     <div class="nav-section">
       <div class="nav-section-label">관리</div>
-      <a class="nav-item" data-page="projects" onclick="showPage('projects')">
-        <span class="nav-icon">🏢</span> 프로젝트 목록
+      <a class="nav-item" data-page="jongsimje" onclick="showPage('jongsimje')">
+        <span class="nav-icon">🏗️</span> 종심제 배치현황
       </a>
       <a class="nav-item" data-page="reports" onclick="showPage('reports')">
         <span class="nav-icon">📄</span> 경력증명서
@@ -470,10 +471,6 @@ tr:hover td { background: var(--surface); }
           <div class="card">
             <div class="card-header"><div class="card-title">분야별 기술등급 분포</div></div>
             <div class="chart-container"><canvas id="chart-grade"></canvas></div>
-          </div>
-          <div class="card">
-            <div class="card-header"><div class="card-title">공종별 인원 분포</div><span style="font-size:11px;color:var(--text3);">골조·마감·설비 등</span></div>
-            <div class="chart-container"><canvas id="chart-projtype"></canvas></div>
           </div>
         </div>
         <div class="card">
@@ -532,15 +529,28 @@ tr:hover td { background: var(--surface); }
               <input type="text" class="form-control" id="s-name" placeholder="김건축">
             </div>
             <div class="form-group" style="margin:0;">
-              <label class="form-label">공사유형 <span style="font-size:10px;color:var(--text3);">(복수 선택 가능)</span></label>
-              <div id="s-projtype-wrap" style="border:1.5px solid var(--border);border-radius:7px;background:var(--bg2);position:relative;">
-                <div id="s-projtype-display" onclick="toggleProjtypeDropdown()"
-                  style="padding:9px 12px;cursor:pointer;font-size:14px;color:var(--text);display:flex;justify-content:space-between;align-items:center;user-select:none;">
-                  <span id="s-projtype-label" style="color:var(--text3);">전체 (선택 안함)</span>
+              <label class="form-label">공사유형 대구분 <span style="font-size:10px;color:var(--text3);">(복수)</span></label>
+              <div id="s-projtype-major-wrap" style="border:1.5px solid var(--border);border-radius:7px;background:var(--bg2);position:relative;">
+                <div onclick="toggleDropdown('s-projtype-major')"
+                  style="padding:9px 12px;cursor:pointer;font-size:14px;display:flex;justify-content:space-between;align-items:center;user-select:none;">
+                  <span id="s-projtype-major-label" style="color:var(--text3);">전체</span>
                   <span style="font-size:10px;color:var(--text3);">▼</span>
                 </div>
-                <div id="s-projtype-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg2);border:1.5px solid var(--border);border-top:none;border-radius:0 0 7px 7px;z-index:200;max-height:200px;overflow-y:auto;box-shadow:var(--shadow-md);">
-                  <div id="s-projtype-options" style="padding:4px 0;"></div>
+                <div id="s-projtype-major-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg2);border:1.5px solid var(--border);border-top:none;border-radius:0 0 7px 7px;z-index:200;max-height:180px;overflow-y:auto;box-shadow:var(--shadow-md);">
+                  <div id="s-projtype-major-options" style="padding:4px 0;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">공사유형 소구분 <span style="font-size:10px;color:var(--text3);">(복수)</span></label>
+              <div id="s-projtype-minor-wrap" style="border:1.5px solid var(--border);border-radius:7px;background:var(--bg2);position:relative;">
+                <div onclick="toggleDropdown('s-projtype-minor')"
+                  style="padding:9px 12px;cursor:pointer;font-size:14px;display:flex;justify-content:space-between;align-items:center;user-select:none;">
+                  <span id="s-projtype-minor-label" style="color:var(--text3);">전체</span>
+                  <span style="font-size:10px;color:var(--text3);">▼</span>
+                </div>
+                <div id="s-projtype-minor-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg2);border:1.5px solid var(--border);border-top:none;border-radius:0 0 7px 7px;z-index:200;max-height:180px;overflow-y:auto;box-shadow:var(--shadow-md);">
+                  <div id="s-projtype-minor-options" style="padding:4px 0;"></div>
                 </div>
               </div>
             </div>
@@ -607,18 +617,18 @@ tr:hover td { background: var(--surface); }
         </div>
       </div>
 
-      <!-- ── 프로젝트 목록 ── -->
-      <div id="page-projects" class="page">
-        <div class="card">
+      <!-- ── 종심제 배치현황 ── -->
+      <div id="page-jongsimje" class="page">
+        <div class="card" style="margin-bottom:16px;">
           <div class="card-header">
-            <div class="card-title">프로젝트 목록</div>
-            <button class="btn btn-primary" onclick="openProjectModal()">+ 프로젝트 등록</button>
+            <div class="card-title">🏗️ 종심제 배치현황</div>
+            <button class="btn btn-primary" onclick="openJongsimjeModal()">+ 배치 등록</button>
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>프로젝트명</th><th>발주처</th><th>공사유형</th><th>위치</th><th>기간</th><th>규모</th></tr></thead>
-              <tbody id="projects-table-body">
-                <tr><td colspan="6" class="loading-overlay"><div class="spinner"></div> 로딩 중...</td></tr>
+              <thead><tr><th>현장명</th><th>현장소장</th><th>공사담당</th><th>안전담당</th><th>품질담당</th><th>배치일</th><th>관리</th></tr></thead>
+              <tbody id="jongsimje-table-body">
+                <tr><td colspan="7" class="empty-state"><div class="empty-icon">🏗️</div><p>등록된 배치현황이 없습니다</p></td></tr>
               </tbody>
             </table>
           </div>
@@ -629,13 +639,19 @@ tr:hover td { background: var(--surface); }
       <div id="page-reports" class="page">
         <div class="card">
           <div class="card-header"><div class="card-title">📄 경력증명서 발급</div></div>
-          <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
-            <select class="form-control" id="report-engineer-select" style="max-width:240px;">
-              <option value="">기술인 선택</option>
-            </select>
-            <button class="btn btn-primary" onclick="loadReport()">경력 조회</button>
-            <button class="btn btn-success" onclick="printReport()" id="print-btn" style="display:none;">🖨️ PDF 출력</button>
+          <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end;">
+            <div>
+              <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">이름 또는 사번 검색</label>
+              <div style="display:flex;gap:6px;">
+                <input type="text" class="form-control" id="report-search-input" placeholder="이름 또는 사번 입력..."
+                  style="max-width:200px;" oninput="filterReportList()" onkeypress="if(event.key==='Enter')loadReport()">
+                <button class="btn btn-primary" onclick="loadReport()">경력 조회</button>
+                <button class="btn btn-success" onclick="printReport()" id="print-btn" style="display:none;">🖨️ PDF 출력</button>
+              </div>
+              <div id="report-search-results" style="position:relative;"></div>
+            </div>
           </div>
+          <input type="hidden" id="report-engineer-select" value="">
           <div id="report-area"></div>
         </div>
       </div>
@@ -985,7 +1001,7 @@ tr:hover td { background: var(--surface); }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ⚙️  설정 — Apps Script 배포 후 URL을 여기에 입력
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const API_URL = "https://script.google.com/macros/s/AKfycbwsmwPpjdCrCVV8PTD63H6q919Adlk89djBug51KU4_DCjqiTPiCZFpf1F9Fz4pFwJtwQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwzbFSIaAFKn2O-jVzpovfqsqk1ALcyNa4fkLJ7HqJrS1riJtzQbrGX0vTUHPeEQev6rg/exec";
 // 예: "https://script.google.com/macros/s/AKfyc.../exec"
 
 // 분야별 기술등급 배지 렌더링
@@ -1188,8 +1204,8 @@ function processExcelFile(file) {
             참여시작일:       start,
             참여종료일:       end,
             인정일수:        injung,
-            공사유형_대구분: String(r["공사유형_대구분*"] || r["공사유형_대구분"] || r["공사종류*"] || r["공사종류"] || "").trim(),
-            공사유형_소구분: String(r["공사유형_소구분"] || "").trim(),
+            공사유형_대구분: String(r["공사유형_대구분*"] || r["공사유형_대구분"] || r["공사종류*"] || r["공사종류"] || r["공사유형"] || "").trim(),
+            공사유형_소구분: String(r["공사유형_소구분*"] || r["공사유형_소구분"] || "").trim(),
             공법:           String(r["공법"] || "").trim(),
             직무분야:        String(r["직무분야"] || "").trim(),
             전문분야:        String(r["전문분야"] || 공종구버전 || "").trim(),  // 구버전 공종 → 전문분야
@@ -1236,36 +1252,28 @@ function processExcelFile(file) {
 
 function formatExcelDate(val) {
   if (!val && val !== 0) return "";
-  // Date 객체
+  // Date 객체 → getFullYear/Month/Date (로컬 타임존 기준)
   if (val instanceof Date) {
-    const y = val.getFullYear();
-    const m = String(val.getMonth()+1).padStart(2,"0");
-    const d = String(val.getDate()).padStart(2,"0");
+    // cellDates:true 옵션 시 Date 객체로 오지만 UTC 자정이 로컬로 밀릴 수 있음
+    // getTime()에 timezone offset 더해서 UTC 날짜 기준으로 추출
+    const utc = new Date(val.getTime() + val.getTimezoneOffset() * 60000);
+    const y = utc.getFullYear();
+    const m = String(utc.getMonth()+1).padStart(2,"0");
+    const d = String(utc.getDate()).padStart(2,"0");
     return `${y}-${m}-${d}`;
   }
-  // 숫자(엑셀 시리얼 날짜) → JS Date 변환
+  // 숫자(엑셀 시리얼) → UTC 기준 변환
   if (typeof val === "number") {
-    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
-    const y = d.getUTCFullYear();
-    const mo = String(d.getUTCMonth()+1).padStart(2,"0");
-    const dy = String(d.getUTCDate()).padStart(2,"0");
-    return `${y}-${mo}-${dy}`;
+    const ms = Math.round((val - 25569) * 86400 * 1000);
+    const d = new Date(ms);
+    return d.getUTCFullYear() + "-" +
+      String(d.getUTCMonth()+1).padStart(2,"0") + "-" +
+      String(d.getUTCDate()).padStart(2,"0");
   }
   const s = String(val).trim();
-  // YYYY-MM-DD 형식
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // YYYY-MM-DD HH:MM:SS (datetime 문자열)
-  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(s)) return s.slice(0, 10);
-  // YYYYMMDD
-  if (/^\d{8}$/.test(s)) return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
-  // 날짜 파싱 시도
-  const parsed = new Date(s);
-  if (!isNaN(parsed.getTime())) {
-    const y = parsed.getFullYear();
-    const m = String(parsed.getMonth()+1).padStart(2,"0");
-    const d = String(parsed.getDate()).padStart(2,"0");
-    return `${y}-${m}-${d}`;
-  }
+  if (/^\d{4}-\d{2}-\d{2}[\sT]/.test(s)) return s.slice(0, 10);
+  if (/^\d{8}$/.test(s)) return s.slice(0,4)+"-"+s.slice(4,6)+"-"+s.slice(6,8);
   return s;
 }
 
@@ -1351,80 +1359,75 @@ async function executeUpload() {
   if (!eng.length && !exp.length && !cert.length) {
     toast("등록할 데이터가 없습니다", "error"); return;
   }
-
   const total = eng.length + exp.length + cert.length;
   if (!confirm(`총 ${total}건을 등록하시겠습니까?
 기술인 ${eng.length}명 · 경력 ${exp.length}건 · 자격증 ${cert.length}건`)) return;
 
-  btn.disabled = true;
-  btn.textContent = "등록 중...";
-  status.textContent = "";
-
+  btn.disabled = true; btn.textContent = "등록 중..."; status.textContent = "";
   let succeeded = 0, failed = 0, errors = [];
 
-  // ① 기술인 등록
-  for (const e of eng) {
-    try {
-      status.textContent = `기술인 등록 중... (${succeeded+1}/${eng.length})`;
-      await apiPost("addEngineer", e);
-      succeeded++;
-    } catch(err) {
-      failed++;
-      errors.push(`기술인 "${e.이름}": ${err.message}`);
-    }
+  // ① 기술인 배치 등록 (한 번에 전송)
+  try {
+    status.textContent = `기술인 ${eng.length}명 배치 등록 중...`;
+    const res = await apiPost("importExcel", { engineers: eng });
+    succeeded += res.added || 0;
+  } catch(err) {
+    failed += eng.length;
+    errors.push(`기술인 배치 등록 실패: ${err.message}`);
   }
 
-  // ② 기술인ID 매핑 (이름 → ID)
-  let empNoToId = {}, nameToId = {};
+  // ② 기술인ID 매핑
+  let empNoToId = {};
   try {
+    status.textContent = "기술인 ID 매핑 중...";
     const engineers = await api("getEngineers");
-    engineers.forEach(e => {
-      if (e["사번"]) empNoToId[e["사번"]] = e["ID"];
-      nameToId[e["이름"]] = e["ID"];
-    });
+    engineers.forEach(e => { if (e["사번"]) empNoToId[e["사번"]] = e["ID"]; });
   } catch(err) {}
 
-  // ③ 경력 등록 — 사번 우선, 이름 보조 (동명이인 대응)
-  for (const e of exp) {
-    try {
+  // ③ 경력 배치 등록
+  if (exp.length > 0) {
+    const mapped = [], unmapped = [];
+    exp.forEach(e => {
       const engId = empNoToId[e.기술인사번];
-      if (!engId) {
-        failed++;
-        errors.push(`경력 "${e.기술인사번 || "(사번없음)"} ${e.기술인이름||""}": 사번과 일치하는 기술인 없음`);
-        continue;
+      if (engId) mapped.push({ ...e, 기술인ID: engId });
+      else { failed++; unmapped.push(e.기술인사번); }
+    });
+    if (unmapped.length) errors.push(`경력 매핑 실패 사번: ${[...new Set(unmapped)].join(", ")}`);
+    if (mapped.length > 0) {
+      try {
+        status.textContent = `경력 ${mapped.length}건 배치 등록 중...`;
+        const res = await apiPost("batchAddExperiences", { experiences: mapped });
+        succeeded += res.added || 0;
+      } catch(err) {
+        failed += mapped.length;
+        errors.push(`경력 배치 등록 실패: ${err.message}`);
       }
-      status.textContent = `경력 등록 중... (${succeeded}건 완료)`;
-      await apiPost("addExperience", { ...e, 기술인ID: engId });
-      succeeded++;
-    } catch(err) {
-      failed++;
-      errors.push(`경력 "${e.프로젝트명직접입력}": ${err.message}`);
     }
   }
 
-  // ④ 자격증 등록
-  for (const c of cert) {
-    try {
+  // ④ 자격증 배치 등록
+  if (cert.length > 0) {
+    const mapped = [], unmapped = [];
+    cert.forEach(c => {
       const engId = empNoToId[c.기술인사번];
-      if (!engId) {
-        failed++;
-        errors.push(`자격증 "${c.기술인사번 || "(사번없음)"} ${c.기술인이름||""}": 사번과 일치하는 기술인 없음`);
-        continue;
+      if (engId) mapped.push({ ...c, 기술인ID: engId });
+      else { failed++; unmapped.push(c.기술인사번); }
+    });
+    if (unmapped.length) errors.push(`자격증 매핑 실패 사번: ${[...new Set(unmapped)].join(", ")}`);
+    if (mapped.length > 0) {
+      try {
+        status.textContent = `자격증 ${mapped.length}건 배치 등록 중...`;
+        const res = await apiPost("batchAddCerts", { certs: mapped });
+        succeeded += res.added || 0;
+      } catch(err) {
+        failed += mapped.length;
+        errors.push(`자격증 배치 등록 실패: ${err.message}`);
       }
-      status.textContent = `자격증 등록 중... (${succeeded}건 완료)`;
-      await apiPost("addCert", { ...c, 기술인ID: engId });
-      succeeded++;
-    } catch(err) {
-      failed++;
-      errors.push(`자격증 "${c.자격증명}": ${err.message}`);
     }
   }
 
-  btn.disabled = false;
-  btn.textContent = "✅ 일괄 등록 실행";
-  status.textContent = "";
-
-  // 결과 표시
+  btn.disabled = false; btn.textContent = "✅ 일괄 등록 실행"; status.textContent = "";
+  cacheClear("all");
   const resultEl = document.getElementById("upload-result");
   resultEl.style.display = "block";
   resultEl.innerHTML = `
@@ -1435,13 +1438,12 @@ async function executeUpload() {
       <div style="font-size:13px;color:${failed===0?'#047857':'#b91c1c'};">
         성공 <strong>${succeeded}건</strong>${failed>0 ? ` · 실패 <strong>${failed}건</strong>` : ""}
       </div>
-      ${errors.length ? `<details style="margin-top:10px;"><summary style="font-size:12px;cursor:pointer;color:#b91c1c;">오류 상세 보기 (${errors.length}건)</summary>
+      ${errors.length ? `<details style="margin-top:10px;"><summary style="font-size:12px;cursor:pointer;color:#b91c1c;">오류 상세 (${errors.length}건)</summary>
         <ul style="margin-top:6px;font-size:12px;color:#991b1b;padding-left:16px;">${errors.map(e=>`<li>${e}</li>`).join("")}</ul>
       </details>` : ""}
       ${failed===0 ? `<button class="btn btn-primary" style="margin-top:12px;" onclick="showPage('engineers')">기술인 목록 보기 →</button>` : ""}
-    </div>
-  `;
-  if (failed === 0) toast(`${succeeded}건 등록 완료!`, "success");
+    </div>`;
+  if (failed===0) toast(`${succeeded}건 등록 완료!`, "success");
   else toast(`${succeeded}건 완료, ${failed}건 실패`, "error");
 }
 
@@ -1607,14 +1609,14 @@ function showPage(page) {
 
   const titles = {
     dashboard: "대시보드", engineers: "기술인 목록",
-    search: "전문가 검색", projects: "프로젝트 목록", reports: "경력증명서", upload: "엑셀 일괄등록"
+    search: "전문가 검색", jongsimje: "종심제 배치현황", reports: "경력증명서", upload: "엑셀 일괄등록"
   };
   document.getElementById("page-title").textContent = titles[page] || "";
 
   // 페이지별 데이터 로딩
   if (page === "dashboard") loadDashboard();
   else if (page === "engineers") loadEngineers();
-  else if (page === "projects") loadProjects();
+  else if (page === "jongsimje") loadJongsimje();
   else if (page === "reports") loadReportEngineers();
   else if (page === "search") loadSearchFilters();
 
@@ -1656,25 +1658,27 @@ async function loadDashboard() {
 }
 
 function renderDashboardStats(data) {
+  const gd = data.기술등급분포 || { 건축: {}, 품질: {} };
+  const 기술사수 = data.기술사보유수 || 0;
   document.getElementById("dashboard-stats").innerHTML = `
     <div class="stat-card" style="--card-color:#1a56db">
       <div class="stat-label">전체 기술인</div>
       <div class="stat-value">${data.총기술인수}</div>
       <div class="stat-sub">명</div>
     </div>
+    <div class="stat-card" style="--card-color:#8b5cf6">
+      <div class="stat-label">건축 특급 기술인</div>
+      <div class="stat-value">${gd.건축["특급"]||0}</div>
+      <div class="stat-sub">명</div>
+    </div>
     <div class="stat-card" style="--card-color:#f59e0b">
-      <div class="stat-label">등록 프로젝트</div>
-      <div class="stat-value">${data.총프로젝트수}</div>
-      <div class="stat-sub">건</div>
+      <div class="stat-label">품질 특급 기술인</div>
+      <div class="stat-value">${gd.품질["특급"]||0}</div>
+      <div class="stat-sub">명</div>
     </div>
     <div class="stat-card" style="--card-color:#10b981">
-      <div class="stat-label">보유 자격증</div>
-      <div class="stat-value">${data.총자격증수}</div>
-      <div class="stat-sub">건</div>
-    </div>
-    <div class="stat-card" style="--card-color:#8b5cf6">
-      <div class="stat-label">특급 기술인</div>
-      <div class="stat-value">${(data.기술등급분포.건축["특급"]||0) + (data.기술등급분포.품질["특급"]||0)}</div>
+      <div class="stat-label">기술사 보유 인원</div>
+      <div class="stat-value">${기술사수}</div>
       <div class="stat-sub">명</div>
     </div>
   `;
@@ -1728,27 +1732,7 @@ function renderCharts(data) {
     }
   });
 
-  // 공종별 인원 (보조 차트)
-  const wt = data.공종별분포 || [];
-  chartProjtype = new Chart(document.getElementById("chart-projtype"), {
-    type: "bar",
-    data: {
-      labels: wt.map(x => x.공종),
-      datasets: [{
-        label: "기술인 수",
-        data: wt.map(x => x.인원),
-        backgroundColor: palette.slice(2),
-        borderRadius: 6,
-        borderSkipped: false
-      }]
-    },
-    options: {
-      indexAxis: "y",
-      plugins: { legend: { display: false } },
-      scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
-      responsive: true, maintainAspectRatio: false
-    }
-  });
+  // 공종별 인원 차트 제거됨
 }
 
 function renderTopEngineers(list) {
@@ -1811,7 +1795,7 @@ function renderEngineersTable() {
       <td>${e["소속부서"] || "-"}</td>
       <td>${e["직급"] || ""} / ${e["직책"] || ""}</td>
       <td>${gradeBadge(e["건축분야등급"])}</td><td>${gradeBadge(e["품질분야등급"])}</td><td>${e["총경력연수"]}년</td>
-      <td id="cert-count-${e.ID}">-</td>
+      <td>${e["자격증수"] > 0 ? `<span class="badge badge-green" title="${e["자격증목록"]}">✓ ${e["자격증수"]}건</span>` : "-"}</td>
       <td>${e["연락처"] || "-"}</td>
       <td>
         <div style="display:flex;gap:6px;">
@@ -2146,13 +2130,20 @@ async function loadSearchFilters() {
         });
       } catch(e) {}
     }
-    const ptOpts = document.getElementById("s-projtype-options");
-    ptOpts.innerHTML = [...projtypes].sort().map(v =>
+    // 대구분/소구분 분리 수집
+    const majorSet = new Set(), minorSet = new Set();
+    [...projtypes].forEach(v => {
+      if (v.includes("/")) { const [maj,min] = v.split("/"); majorSet.add(maj.trim()); if(min) minorSet.add(min.trim()); }
+      else majorSet.add(v);
+    });
+    const ptMajorOpts = document.getElementById("s-projtype-major-options");
+    const ptMinorOpts = document.getElementById("s-projtype-minor-options");
+    if (ptMajorOpts) ptMajorOpts.innerHTML = [...majorSet].sort().map(v =>
       `<label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--text);">
-        <input type="checkbox" class="pt-checkbox" value="${v}" onchange="updateProjtypeLabel()">
-        ${v}
-      </label>`
-    ).join("");
+        <input type="checkbox" class="pt-major-checkbox" value="${v}" onchange="updateProjtypeMajorLabel()"> ${v}</label>`).join("");
+    if (ptMinorOpts) ptMinorOpts.innerHTML = [...minorSet].sort().map(v =>
+      `<label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--text);">
+        <input type="checkbox" class="pt-minor-checkbox" value="${v}" onchange="updateProjtypeMinorLabel()"> ${v}</label>`).join("");
     // 담당업무 체크박스 동적 생성
     const wtOpts = document.getElementById("s-worktype-options");
     wtOpts.innerHTML = [...worktypes].sort().map(v =>
@@ -2164,28 +2155,31 @@ async function loadSearchFilters() {
   } catch(e) {}
 }
 
-// 공사유형 다중선택 헬퍼
-function toggleProjtypeDropdown() {
-  const dd = document.getElementById("s-projtype-dropdown");
+// 공통 드롭다운 헬퍼
+function toggleDropdown(id) {
+  const dd = document.getElementById(id + "-dropdown");
+  document.querySelectorAll("[id$='-dropdown']").forEach(el => { if (el.id !== id+"-dropdown") el.style.display="none"; });
   dd.style.display = dd.style.display === "none" ? "block" : "none";
 }
-function getSelectedProjtypes() {
-  return [...document.querySelectorAll(".pt-checkbox:checked")].map(c => c.value);
+function getSelectedItems(cls) {
+  return [...document.querySelectorAll("."+cls+":checked")].map(c => c.value);
 }
-function clearProjtypeSelection() {
-  document.querySelectorAll(".pt-checkbox").forEach(c => c.checked = false);
-  updateProjtypeLabel();
+function clearItems(cls, labelId) {
+  document.querySelectorAll("."+cls).forEach(c => c.checked = false);
+  const lbl = document.getElementById(labelId);
+  if (lbl) { lbl.textContent = "전체"; lbl.style.color = "var(--text3)"; }
 }
-function updateProjtypeLabel() {
-  const selected = getSelectedProjtypes();
-  const label = document.getElementById("s-projtype-label");
-  if (selected.length === 0) {
-    label.textContent = "전체 (선택 안함)";
-    label.style.color = "var(--text3)";
-  } else {
-    label.textContent = selected.join(", ");
-    label.style.color = "var(--text)";
-  }
+function updateProjtypeMajorLabel() {
+  const sel = getSelectedItems("pt-major-checkbox");
+  const lbl = document.getElementById("s-projtype-major-label");
+  lbl.textContent = sel.length ? sel.join(", ") : "전체";
+  lbl.style.color = sel.length ? "var(--text)" : "var(--text3)";
+}
+function updateProjtypeMinorLabel() {
+  const sel = getSelectedItems("pt-minor-checkbox");
+  const lbl = document.getElementById("s-projtype-minor-label");
+  lbl.textContent = sel.length ? sel.join(", ") : "전체";
+  lbl.style.color = sel.length ? "var(--text)" : "var(--text3)";
 }
 
 // 담당업무 다중선택 헬퍼
@@ -2213,25 +2207,21 @@ function updateWorktypeLabel() {
 }
 // 드롭다운 외부 클릭 시 닫기
 document.addEventListener("click", function(e) {
-  // 공사유형 드롭다운
-  const ptWrap = document.getElementById("s-projtype-wrap");
-  if (ptWrap && !ptWrap.contains(e.target)) {
-    const ptDd = document.getElementById("s-projtype-dropdown");
-    if (ptDd) ptDd.style.display = "none";
-  }
-  // 담당업무 드롭다운
-  const wrap = document.getElementById("s-worktype-wrap");
-  if (wrap && !wrap.contains(e.target)) {
-    const dd = document.getElementById("s-worktype-dropdown");
-    if (dd) dd.style.display = "none";
-  }
+  ["s-projtype-major","s-projtype-minor","s-worktype"].forEach(id => {
+    const wrap = document.getElementById(id+"-wrap");
+    if (wrap && !wrap.contains(e.target)) {
+      const dd = document.getElementById(id+"-dropdown");
+      if (dd) dd.style.display = "none";
+    }
+  });
 });
 
 async function doSearch() {
   const params = {
     name: document.getElementById("s-name").value,
     workType: getSelectedWorktypes().join(","),   // 담당업무 (쉼표 구분 복수)
-    projectType: getSelectedProjtypes().join(","), // 공사유형 (복수)
+    projMajor: getSelectedItems("pt-major-checkbox").join(","),
+    projMinor: getSelectedItems("pt-minor-checkbox").join(","),
     chaegim: document.getElementById("s-chaegim").value, // 책임정도
     archGrade: document.getElementById("s-arch-grade").value,
     qualGrade: document.getElementById("s-qual-grade").value,
@@ -2287,7 +2277,8 @@ async function doSearch() {
 function clearSearch() {
   ["s-name","s-minexp"].forEach(id => document.getElementById(id).value = "");
   ["s-arch-grade","s-qual-grade","s-certtype","s-chaegim"].forEach(id => document.getElementById(id).value = "");
-  clearProjtypeSelection();
+  clearItems("pt-major-checkbox", "s-projtype-major-label");
+  clearItems("pt-minor-checkbox", "s-projtype-minor-label");
   clearWorktypeSelection();
   document.getElementById("search-results").innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>검색 조건을 입력하고 검색 버튼을 누르세요</p></div>';
   document.getElementById("search-count").textContent = "";
@@ -2347,13 +2338,32 @@ async function saveProject() {
 }
 
 // ── 경력증명서 ──────────────────────────────────
+let _reportEngineers = [];
 async function loadReportEngineers() {
   try {
-    const engineers = await api("getEngineers");
-    const sel = document.getElementById("report-engineer-select");
-    sel.innerHTML = '<option value="">기술인 선택</option>' +
-      engineers.map(e => `<option value="${e.ID}">${e["이름"]} (${e["소속부서"]||""})</option>`).join("");
+    _reportEngineers = await api("getEngineers");
   } catch(e) {}
+}
+function filterReportList() {
+  const q = document.getElementById("report-search-input").value.trim().toLowerCase();
+  const wrap = document.getElementById("report-search-results");
+  if (!q) { wrap.innerHTML = ""; return; }
+  const matched = _reportEngineers.filter(e =>
+    e["이름"].toLowerCase().includes(q) || (e["사번"]||"").toLowerCase().includes(q)
+  ).slice(0, 8);
+  if (!matched.length) { wrap.innerHTML = ""; return; }
+  wrap.innerHTML = `<div style="position:absolute;top:0;left:0;background:var(--bg2);border:1px solid var(--border);border-radius:7px;z-index:100;width:300px;box-shadow:var(--shadow-md);">
+    ${matched.map(e => `<div onclick="selectReportEngineer('${e.ID}','${e["이름"]} (${e["사번"]||""})')"
+      style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
+      onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
+      <strong>${e["이름"]}</strong> <span style="color:var(--text3);font-size:11px;">${e["사번"]||""} · ${e["소속부서"]||""}</span>
+    </div>`).join("")}
+  </div>`;
+}
+function selectReportEngineer(id, label) {
+  document.getElementById("report-engineer-select").value = id;
+  document.getElementById("report-search-input").value = label;
+  document.getElementById("report-search-results").innerHTML = "";
 }
 
 async function loadReport() {
@@ -2374,56 +2384,58 @@ function renderReport(data) {
 
   document.getElementById("report-area").innerHTML = `
     <div id="pdf-preview">
-      <h1>기술경력증명서</h1>
+      <h1>기 술 경 력 증 명 서</h1>
 
       <div class="section-title">1. 인적사항</div>
       <table>
-        <tr><th width="120">사 번</th><td>${eng["사번"] || "-"}</td><th width="120">성 명</th><td>${eng["이름"]}</td></tr>
-          <tr><th>생년월일</th><td>${eng["생년월일"] || "-"}</td><th>연락처</th><td>${eng["연락처"] || "-"}</td></tr>
-        <tr><th>소속부서</th><td>${eng["소속부서"] || "-"}</td><th>직 급</th><td>${eng["직급"] || "-"}</td></tr>
-        <tr><th>건축분야등급</th><td><strong>${eng["건축분야등급"] || "-"}</strong></td><th>품질분야등급</th><td><strong>${eng["품질분야등급"] || "-"}</strong></td></tr>
-        <tr><th>총경력연수</th><td colspan="3"><strong>${eng["총경력연수"]}년 (중복기간 제거)</strong></td></tr>
-        <tr><th>연락처</th><td>${eng["연락처"] || "-"}</td><th>입사일</th><td>${eng["입사일"] || "-"}</td></tr>
+        <colgroup><col width="60"><col width="120"><col width="60"><col width="120"><col width="60"><col></colgroup>
+        <tr><th>사 번</th><td>${eng["사번"]||"-"}</td><th>성 명</th><td><strong>${eng["이름"]}</strong></td><th>생년월일</th><td>${fmtDate(eng["생년월일"])}</td></tr>
+        <tr><th>소속부서</th><td>${eng["소속부서"]||"-"}</td><th>직 급</th><td>${eng["직급"]||"-"}</td><th>입사일</th><td>${fmtDate(eng["입사일"])}</td></tr>
+        <tr><th>건축등급</th><td><strong>${eng["건축분야등급"]||"-"}</strong></td><th>품질등급</th><td><strong>${eng["품질분야등급"]||"-"}</strong></td><th>총경력</th><td><strong>${eng["총경력연수"]}년</strong></td></tr>
+        <tr><th>연락처</th><td colspan="5">${eng["연락처"]||"-"}</td></tr>
       </table>
 
       <div class="section-title">2. 자격증 현황</div>
       <table>
+        <colgroup><col width="180"><col width="160"><col width="100"><col></colgroup>
         <tr><th>자격증명</th><th>자격증번호</th><th>취득일</th><th>발급기관</th></tr>
-        ${certs.length ? certs.map(c=>`<tr><td>${c["자격증명"]}</td><td>${c["자격증번호"]||"-"}</td><td>${c["취득일"]||"-"}</td><td>${c["발급기관"]||"-"}</td></tr>`).join("") : "<tr><td colspan='4' style='text-align:center'>-</td></tr>"}
+        ${certs.length ? certs.map(c=>`<tr><td>${c["자격증명"]}</td><td>${c["자격증번호"]||"-"}</td><td style="text-align:center">${fmtDate(c["취득일"])}</td><td>${c["발급기관"]||"-"}</td></tr>`).join("") : "<tr><td colspan='4' style='text-align:center'>-</td></tr>"}
       </table>
 
-      <div class="section-title">3. 공종별 경력 요약</div>
-      <table>
-        <tr><th>공종</th><th>경력기간</th></tr>
-        ${wtStats.map(w=>`<tr><td>${w.공종}</td><td>${w.기간표시}</td></tr>`).join("")}
-        <tr><th>합계</th><th>${eng["총경력연수"]}년 (중복제거)</th></tr>
-      </table>
-
-      <div class="section-title">4. 경력 상세 (기술인협회 기준)</div>
-      <table>
-        <tr><th>No</th><th>프로젝트명</th><th>발주처</th><th>시공사</th><th>참여기간</th><th>인정일수</th><th>대구분</th><th>소구분</th><th>공법</th><th>직무분야</th><th>전문분야</th><th>책임정도</th><th>직위</th><th>담당업무</th></tr>
+      <div class="section-title">3. 경력 상세</div>
+      <table class="detail-table">
+        <colgroup>
+          <col width="22"><col width="130"><col width="60"><col width="60">
+          <col width="88"><col width="28"><col width="40"><col width="40">
+          <col width="36"><col width="30"><col width="30"><col width="28"><col width="28"><col width="70">
+        </colgroup>
+        <tr>
+          <th>No</th><th>프로젝트명</th><th>발주처</th><th>시공사</th>
+          <th>참여기간</th><th>인정일수</th><th>대구분</th><th>소구분</th>
+          <th>공법</th><th>직무</th><th>전문</th><th>책임</th><th>직위</th><th>담당업무</th>
+        </tr>
         ${exps.map((e,i)=>`
           <tr>
             <td style="text-align:center">${i+1}</td>
             <td>${e["프로젝트명직접입력"]||"-"}</td>
             <td>${e["발주처"]||"-"}</td>
             <td>${e["시공사"]||"-"}</td>
-            <td style="white-space:nowrap">${fmtDate(e["참여시작일"])}~${fmtDate(e["참여종료일"])}<br><small>(${e["기간표시"]})</small></td>
+            <td style="text-align:center;white-space:nowrap">${fmtDate(e["참여시작일"])}~${fmtDate(e["참여종료일"])}<br>(${e["기간표시"]})</td>
             <td style="text-align:center">${e["인정일수"]||"-"}</td>
             <td>${e["공사유형_대구분"]||e["공사유형"]||"-"}</td>
             <td>${e["공사유형_소구분"]||"-"}</td>
             <td>${e["공법"]||"-"}</td>
             <td>${e["직무분야"]||"-"}</td>
             <td>${e["전문분야"]||"-"}</td>
-            <td>${e["책임정도"]||"-"}</td>
+            <td style="text-align:center">${e["책임정도"]||"-"}</td>
             <td>${e["직위"]||"-"}</td>
             <td>${e["담당업무"]||"-"}</td>
           </tr>
         `).join("")}
       </table>
 
-      <div style="margin-top:40px;text-align:right;font-size:12px;color:#666;">
-        발급일: ${new Date().toLocaleDateString("ko-KR")} | 건축사업본부 기술인 경력관리 시스템
+      <div style="margin-top:20px;text-align:right;font-size:9px;color:#666;">
+        발급일: ${new Date().toLocaleDateString("ko-KR")} &nbsp;|&nbsp; 건축사업본부 기술인 경력관리 시스템
       </div>
     </div>
   `;
@@ -2434,14 +2446,17 @@ function printReport() {
   const w = window.open("", "_blank");
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>경력증명서</title>
     <style>
-      body { font-family: 'Malgun Gothic','Apple SD Gothic Neo',sans-serif; font-size:12px; }
-      h1 { font-size:20px; text-align:center; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:24px; }
-      .section-title { font-size:14px; font-weight:700; background:#f0f0f0; padding:6px 10px; margin:16px 0 8px; }
-      table { width:100%; border-collapse:collapse; }
-      td, th { border:1px solid #ccc; padding:6px 8px; font-size:11.5px; }
-      th { background:#e8e8e8; font-weight:700; }
-      @media print { body { margin:0; } }
-    </style></head><body>${content}<script>window.print();<\/script></body></html>`);
+      * { box-sizing: border-box; }
+      body { font-family: 'Malgun Gothic','Apple SD Gothic Neo',sans-serif; font-size:9.5px; margin:0; padding:16px 20px; width:794px; }
+      h1 { font-size:15px; text-align:center; border-bottom:2px solid #000; padding-bottom:6px; margin-bottom:12px; }
+      .section-title { font-size:10px; font-weight:700; background:#f0f0f0; padding:3px 8px; margin:8px 0 4px; }
+      table { width:100%; border-collapse:collapse; table-layout:fixed; }
+      td, th { border:1px solid #bbb; padding:3px 4px; font-size:8.5px; word-break:break-all; }
+      th { background:#e8e8e8; font-weight:700; text-align:center; }
+      .detail-table td, .detail-table th { font-size:7.5px; padding:2px 3px; }
+      @page { size: A4 portrait; margin: 10mm; }
+      @media print { body { width:100%; padding:0; } }
+    </style></head><body>${content}<script>window.onload=function(){window.print();}<\/script></body></html>`);
   w.document.close();
 }
 
