@@ -379,6 +379,10 @@ tr:hover td { background: var(--surface); }
   .card { padding: 0; }
   .card-header { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
   .card-title { font-size: 14px; }
+  /* ── 종심제: 모바일=카드뷰, 데스크톱=테이블 ── */
+  .jj-table-wrap { display: none !important; }
+  .jj-card-wrap { display: block !important; }
+}
 
   /* ── 폼 ── */
   .form-row { grid-template-columns: 1fr; gap: 10px; }
@@ -472,6 +476,12 @@ tr:hover td { background: var(--surface); }
   .eng-card-name { font-size: 15px; }
   #mobile-bottom-nav .mob-nav-item { font-size: 9px; }
   #mobile-bottom-nav .mob-icon { font-size: 18px; }
+}
+
+/* ── 데스크톱: 종심제 테이블 표시 ─────────────── */
+@media (min-width: 769px) {
+  .jj-table-wrap { display: block !important; }
+  .jj-card-wrap { display: none !important; }
 }
 
 /* ── 차트 컨테이너 ────────────────────── */
@@ -870,15 +880,16 @@ tr:hover td { background: var(--surface); }
               <button class="btn btn-secondary" onclick="closeJongsimjeForm()">취소</button>
             </div>
           </div>
-          <!-- 목록 테이블 -->
-          <div class="table-wrap" style="overflow-x:auto;">
-            <table style="min-width:900px;">
+          <!-- 목록: 데스크톱=테이블, 모바일=카드(CSS로 전환) -->
+          <div class="jj-table-wrap table-wrap" style="overflow-x:auto;">
+            <table id="jongsimje-table" style="min-width:680px;">
               <thead><tr><th>현장명</th><th>현장소장</th><th>공사담당</th><th>안전담당</th><th>품질담당</th><th>배치일</th><th>비고</th><th style="width:100px;">관리</th></tr></thead>
               <tbody id="jongsimje-table-body">
-                <tr><td colspan="7" class="empty-state"><div class="empty-icon">🏗️</div><p>등록된 배치현황이 없습니다</p></td></tr>
+                <tr><td colspan="8" class="empty-state"><div class="empty-icon">🏗️</div><p>등록된 배치현황이 없습니다</p></td></tr>
               </tbody>
             </table>
           </div>
+          <div id="jongsimje-card-list" class="jj-card-wrap"></div>
         </div>
       </div>
 
@@ -2843,30 +2854,64 @@ function exportSearchResult() {
 let JONGSIMJE_DATA = JSON.parse(localStorage.getItem("jongsimje") || "[]");
 
 function loadJongsimje() {
-  const dl = document.getElementById("eng-list");
-  if (dl && ALL_ENGINEERS.length) {
-    dl.innerHTML = ALL_ENGINEERS.map(e => `<option value="${e["이름"]}(${e["사번"]||""})">`).join("");
-  }
   const tbody = document.getElementById("jongsimje-table-body");
-  if (!tbody) return;
-  if (!JONGSIMJE_DATA.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="empty-icon">🏗️</div><p>등록된 배치현황이 없습니다</p></td></tr>';
-    return;
-  }
-  const fmt = arr => (arr||[]).filter(Boolean).join("<br>") || "-";
-  tbody.innerHTML = JONGSIMJE_DATA.map((r,i) => `<tr>
-    <td><strong>${r.현장명}</strong></td>
-    <td style="font-size:12px;">${fmt(r.현장소장)}</td>
-    <td style="font-size:12px;">${fmt(r.공사담당)}</td>
-    <td style="font-size:12px;">${fmt(r.안전담당)}</td>
-    <td style="font-size:12px;">${fmt(r.품질담당)}</td>
-    <td style="white-space:nowrap;">${r.배치일||"-"}</td>
-    <td style="font-size:12px;color:var(--text2);">${r.비고||"-"}</td>
-    <td style="white-space:nowrap;">
-      <button class="btn btn-secondary btn-sm" onclick="editJongsimje(${i})" style="margin-right:4px;">수정</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteJongsimje(${i})">삭제</button>
-    </td>
-  </tr>`).join("");
+  const cardList = document.getElementById("jongsimje-card-list");
+  if (!tbody || !cardList) return;
+
+  const fmt = arr => (arr||[]).filter(Boolean).join(", ") || "-";
+  const fmtBr = arr => (arr||[]).filter(Boolean).join("<br>") || "-";
+  const empty = JONGSIMJE_DATA.length === 0;
+
+  // 테이블 (데스크톱용) 항상 업데이트
+  tbody.innerHTML = empty
+    ? '<tr><td colspan="8" class="empty-state"><div class="empty-icon">🏗️</div><p>등록된 배치현황이 없습니다</p></td></tr>'
+    : JONGSIMJE_DATA.map((r,i) => `<tr>
+        <td><strong>${r.현장명}</strong></td>
+        <td style="font-size:12px;">${fmtBr(r.현장소장)}</td>
+        <td style="font-size:12px;">${fmtBr(r.공사담당)}</td>
+        <td style="font-size:12px;">${fmtBr(r.안전담당)}</td>
+        <td style="font-size:12px;">${fmtBr(r.품질담당)}</td>
+        <td style="white-space:nowrap;">${r.배치일||"-"}</td>
+        <td style="font-size:12px;color:var(--text2);">${r.비고||"-"}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-secondary btn-sm" onclick="editJongsimje(${i})" style="margin-right:4px;">수정</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteJongsimje(${i})">삭제</button>
+        </td>
+      </tr>`).join("");
+
+  // 카드뷰 (모바일용) 항상 업데이트
+  cardList.innerHTML = empty
+    ? '<div class="empty-state"><div class="empty-icon">🏗️</div><p>등록된 배치현황이 없습니다</p></div>'
+    : JONGSIMJE_DATA.map((r,i) => `
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <strong style="font-size:16px;">${r.현장명}</strong>
+            <span style="font-size:11px;color:var(--text3);">${r.배치일||""}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <div style="background:var(--surface);border-radius:8px;padding:10px;">
+              <div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:4px;">👷 현장소장</div>
+              <div style="font-size:13px;color:var(--text);">${fmt(r.현장소장)||"-"}</div>
+            </div>
+            <div style="background:var(--surface);border-radius:8px;padding:10px;">
+              <div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:4px;">🔨 공사담당</div>
+              <div style="font-size:13px;color:var(--text);">${fmt(r.공사담당)||"-"}</div>
+            </div>
+            <div style="background:var(--surface);border-radius:8px;padding:10px;">
+              <div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:4px;">🦺 안전담당</div>
+              <div style="font-size:13px;color:var(--text);">${fmt(r.안전담당)||"-"}</div>
+            </div>
+            <div style="background:var(--surface);border-radius:8px;padding:10px;">
+              <div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:4px;">✅ 품질담당</div>
+              <div style="font-size:13px;color:var(--text);">${fmt(r.품질담당)||"-"}</div>
+            </div>
+          </div>
+          ${r.비고 ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px;">📝 ${r.비고}</div>` : ""}
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary btn-sm" style="flex:1;justify-content:center;" onclick="editJongsimje(${i})">수정</button>
+            <button class="btn btn-danger btn-sm" style="flex:1;justify-content:center;" onclick="deleteJongsimje(${i})">삭제</button>
+          </div>
+        </div>`).join("");
 }
 
 function openJongsimjeForm() {
@@ -2879,7 +2924,7 @@ function openJongsimjeForm() {
       if (el) el.value = "";
     });
   });
-  // 기술인 datalist 채우기
+  // 기술인 datalist 채우기 (있을 경우만)
   const dl = document.getElementById("eng-list");
   if (dl && ALL_ENGINEERS.length) {
     dl.innerHTML = ALL_ENGINEERS.map(e => `<option value="${e["이름"]}(${e["사번"]||""})">`).join("");
@@ -3177,6 +3222,8 @@ window.addEventListener("resize", () => {
   clearTimeout(_resizeTimer);
   _resizeTimer = setTimeout(() => {
     if (ALL_ENGINEERS_FILTERED.length) renderEngineersTable();
+    // 현재 페이지가 종심제면 카드뷰 재렌더
+    if (document.getElementById("page-jongsimje").classList.contains("active")) loadJongsimje();
   }, 200);
 });
 
