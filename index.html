@@ -671,6 +671,13 @@ tr:hover td { background: var(--surface); }
                 <input type="text" class="form-control" id="jj-품질-4" placeholder="5번">
               </div>
             </div>
+            <div class="form-row" style="margin-bottom:12px;">
+              <div class="form-group" style="margin:0;grid-column:1/-1;">
+                <label class="form-label">비고</label>
+                <input type="text" class="form-control" id="jj-note" placeholder="메모 입력">
+              </div>
+            </div>
+            <input type="hidden" id="jj-edit-idx" value="">
             <div style="display:flex;gap:8px;">
               <button class="btn btn-primary" onclick="saveJongsimje()">저장</button>
               <button class="btn btn-secondary" onclick="closeJongsimjeForm()">취소</button>
@@ -679,7 +686,7 @@ tr:hover td { background: var(--surface); }
           <!-- 목록 테이블 -->
           <div class="table-wrap" style="overflow-x:auto;">
             <table style="min-width:900px;">
-              <thead><tr><th>현장명</th><th>현장소장</th><th>공사담당</th><th>안전담당</th><th>품질담당</th><th>배치일</th><th style="width:60px;">관리</th></tr></thead>
+              <thead><tr><th>현장명</th><th>현장소장</th><th>공사담당</th><th>안전담당</th><th>품질담당</th><th>배치일</th><th>비고</th><th style="width:100px;">관리</th></tr></thead>
               <tbody id="jongsimje-table-body">
                 <tr><td colspan="7" class="empty-state"><div class="empty-icon">🏗️</div><p>등록된 배치현황이 없습니다</p></td></tr>
               </tbody>
@@ -1059,7 +1066,7 @@ tr:hover td { background: var(--surface); }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ⚙️  설정 — Apps Script 배포 후 URL을 여기에 입력
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const API_URL = "https://script.google.com/macros/s/AKfycbwzbFSIaAFKn2O-jVzpovfqsqk1ALcyNa4fkLJ7HqJrS1riJtzQbrGX0vTUHPeEQev6rg/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxkz1gP6NryC73f1uaUB3N7oEANDv4YvKKf_ouNlVTniJ36oYj3QEJIrcAjcLRRDyVa0g/exec";
 // 예: "https://script.google.com/macros/s/AKfyc.../exec"
 
 // 분야별 기술등급 배지 렌더링
@@ -1419,31 +1426,37 @@ async function executeUpload() {
     toast("등록할 데이터가 없습니다", "error"); return;
   }
   const total = eng.length + exp.length + cert.length;
-  if (!confirm(`총 ${total}건을 등록하시겠습니까?
-기술인 ${eng.length}명 · 경력 ${exp.length}건 · 자격증 ${cert.length}건`)) return;
+  if (!confirm(`총 ${total}건을 등록하시겠습니까?\n기술인 ${eng.length}명 · 경력 ${exp.length}건 · 자격증 ${cert.length}건`)) return;
 
-  btn.disabled = true; btn.textContent = "등록 중..."; status.textContent = "";
+  btn.disabled = true;
+  btn.textContent = "등록 중...";
   let succeeded = 0, failed = 0, errors = [];
 
-  // ① 기술인 배치 등록 (한 번에 전송)
-  try {
-    status.textContent = `기술인 ${eng.length}명 배치 등록 중...`;
-    const res = await apiPost("importExcel", { engineers: eng });
-    succeeded += res.added || 0;
-  } catch(err) {
-    failed += eng.length;
-    errors.push(`기술인 배치 등록 실패: ${err.message}`);
+  // ① 기술인 배치 등록
+  if (eng.length > 0) {
+    status.textContent = `⏳ 기술인 ${eng.length}명 등록 중...`;
+    try {
+      const res = await apiPost("importExcel", { engineers: eng });
+      succeeded += res.added || 0;
+    } catch(err) {
+      failed += eng.length;
+      errors.push("기술인 등록 실패: " + err.message);
+    }
   }
 
-  // ② 기술인ID 매핑
+  // ② 기술인ID 매핑 (한 번만 조회)
   let empNoToId = {};
-  try {
-    status.textContent = "기술인 ID 매핑 중...";
-    const engineers = await api("getEngineers");
-    engineers.forEach(e => { if (e["사번"]) empNoToId[e["사번"]] = e["ID"]; });
-  } catch(err) {}
+  if (exp.length > 0 || cert.length > 0) {
+    status.textContent = "⏳ ID 매핑 중...";
+    try {
+      const engineers = await api("getEngineers");
+      engineers.forEach(e => { if (e["사번"]) empNoToId[e["사번"]] = e["ID"]; });
+    } catch(err) {}
+  }
 
-  // ③ 경력 배치 등록
+  // ③ 경력 + 자격증 병렬 등록 (Promise.all)
+  const tasks = [];
+
   if (exp.length > 0) {
     const mapped = [], unmapped = [];
     exp.forEach(e => {
@@ -1451,20 +1464,16 @@ async function executeUpload() {
       if (engId) mapped.push({ ...e, 기술인ID: engId });
       else { failed++; unmapped.push(e.기술인사번); }
     });
-    if (unmapped.length) errors.push(`경력 매핑 실패 사번: ${[...new Set(unmapped)].join(", ")}`);
+    if (unmapped.length) errors.push("경력 미매핑 사번: " + [...new Set(unmapped)].join(", "));
     if (mapped.length > 0) {
-      try {
-        status.textContent = `경력 ${mapped.length}건 배치 등록 중...`;
-        const res = await apiPost("batchAddExperiences", { experiences: mapped });
-        succeeded += res.added || 0;
-      } catch(err) {
-        failed += mapped.length;
-        errors.push(`경력 배치 등록 실패: ${err.message}`);
-      }
+      tasks.push(
+        apiPost("batchAddExperiences", { experiences: mapped })
+          .then(r => { succeeded += r.added || 0; })
+          .catch(err => { failed += mapped.length; errors.push("경력 등록 실패: " + err.message); })
+      );
     }
   }
 
-  // ④ 자격증 배치 등록
   if (cert.length > 0) {
     const mapped = [], unmapped = [];
     cert.forEach(c => {
@@ -1472,21 +1481,26 @@ async function executeUpload() {
       if (engId) mapped.push({ ...c, 기술인ID: engId });
       else { failed++; unmapped.push(c.기술인사번); }
     });
-    if (unmapped.length) errors.push(`자격증 매핑 실패 사번: ${[...new Set(unmapped)].join(", ")}`);
+    if (unmapped.length) errors.push("자격증 미매핑 사번: " + [...new Set(unmapped)].join(", "));
     if (mapped.length > 0) {
-      try {
-        status.textContent = `자격증 ${mapped.length}건 배치 등록 중...`;
-        const res = await apiPost("batchAddCerts", { certs: mapped });
-        succeeded += res.added || 0;
-      } catch(err) {
-        failed += mapped.length;
-        errors.push(`자격증 배치 등록 실패: ${err.message}`);
-      }
+      tasks.push(
+        apiPost("batchAddCerts", { certs: mapped })
+          .then(r => { succeeded += r.added || 0; })
+          .catch(err => { failed += mapped.length; errors.push("자격증 등록 실패: " + err.message); })
+      );
     }
   }
 
-  btn.disabled = false; btn.textContent = "✅ 일괄 등록 실행"; status.textContent = "";
+  if (tasks.length > 0) {
+    status.textContent = "⏳ 경력·자격증 병렬 등록 중...";
+    await Promise.all(tasks);
+  }
+
+  btn.disabled = false;
+  btn.textContent = "✅ 일괄 등록 실행";
+  status.textContent = "";
   cacheClear("all");
+
   const resultEl = document.getElementById("upload-result");
   resultEl.style.display = "block";
   resultEl.innerHTML = `
@@ -1494,13 +1508,10 @@ async function executeUpload() {
       <div style="font-size:15px;font-weight:700;color:${failed===0?'#065f46':'#991b1b'};margin-bottom:8px;">
         ${failed===0 ? "✅ 일괄 등록 완료!" : "⚠️ 일부 오류 발생"}
       </div>
-      <div style="font-size:13px;color:${failed===0?'#047857':'#b91c1c'};">
-        성공 <strong>${succeeded}건</strong>${failed>0 ? ` · 실패 <strong>${failed}건</strong>` : ""}
-      </div>
-      ${errors.length ? `<details style="margin-top:10px;"><summary style="font-size:12px;cursor:pointer;color:#b91c1c;">오류 상세 (${errors.length}건)</summary>
-        <ul style="margin-top:6px;font-size:12px;color:#991b1b;padding-left:16px;">${errors.map(e=>`<li>${e}</li>`).join("")}</ul>
-      </details>` : ""}
-      ${failed===0 ? `<button class="btn btn-primary" style="margin-top:12px;" onclick="showPage('engineers')">기술인 목록 보기 →</button>` : ""}
+      <div style="font-size:13px;">성공 <strong>${succeeded}건</strong>${failed>0?` · 실패 <strong>${failed}건</strong>`:""}</div>
+      ${errors.length?`<details style="margin-top:8px;"><summary style="font-size:12px;cursor:pointer;">오류 상세</summary>
+        <ul style="margin-top:4px;font-size:12px;padding-left:16px;">${errors.map(e=>`<li>${e}</li>`).join("")}</ul></details>`:""}
+      ${failed===0?`<button class="btn btn-primary" style="margin-top:12px;" onclick="showPage('engineers')">기술인 목록 보기 →</button>`:""}
     </div>`;
   if (failed===0) toast(`${succeeded}건 등록 완료!`, "success");
   else toast(`${succeeded}건 완료, ${failed}건 실패`, "error");
@@ -1958,20 +1969,29 @@ async function saveEngineer() {
     입사일: document.getElementById("eng-hiredate").value,
     비고: document.getElementById("eng-note").value,
   };
-  if (!body.사번) { toast("사번은 필수입니다", "error"); return; }
   if (!body.이름) { toast("이름은 필수입니다", "error"); return; }
-
   try {
     if (id) {
-      await apiPost("updateEngineer", { ...body, id });
+      // 수정: 즉시 로컬 반영
+      await apiPost("updateEngineer", { id, ...body });
+      const idx = ALL_ENGINEERS.findIndex(e => e.ID === id);
+      if (idx >= 0) ALL_ENGINEERS[idx] = { ...ALL_ENGINEERS[idx], ...body };
       toast("수정 완료", "success");
     } else {
-      await apiPost("addEngineer", body);
+      // 추가: API 응답의 ID로 즉시 추가
+      const res = await apiPost("addEngineer", body);
+      const newEng = { ID: res.id, ...body, 총경력연수: 0, 자격증수: 0, 자격증목록: "" };
+      ALL_ENGINEERS.unshift(newEng);
       toast("등록 완료", "success");
     }
     cacheClear("all");
     closeModal("engineer-modal");
-    loadEngineers();
+    // 서버 재조회 없이 로컬 데이터로 즉시 렌더링
+    ALL_ENGINEERS_FILTERED = [...ALL_ENGINEERS];
+    populateDeptFilter();
+    renderEngineersTable();
+    // 백그라운드에서 서버 데이터 동기화
+    setTimeout(() => loadEngineers(), 3000);
   } catch(e) {
     toast("저장 실패: " + e.message, "error");
   }
@@ -2397,8 +2417,12 @@ function loadJongsimje() {
     <td style="font-size:12px;">${fmt(r.공사담당)}</td>
     <td style="font-size:12px;">${fmt(r.안전담당)}</td>
     <td style="font-size:12px;">${fmt(r.품질담당)}</td>
-    <td>${r.배치일||"-"}</td>
-    <td><button class="btn btn-danger btn-sm" onclick="deleteJongsimje(${i})">삭제</button></td>
+    <td style="white-space:nowrap;">${r.배치일||"-"}</td>
+    <td style="font-size:12px;color:var(--text2);">${r.비고||"-"}</td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-secondary btn-sm" onclick="editJongsimje(${i})" style="margin-right:4px;">수정</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteJongsimje(${i})">삭제</button>
+    </td>
   </tr>`).join("");
 }
 
@@ -2421,6 +2445,25 @@ function openJongsimjeForm() {
 
 function closeJongsimjeForm() {
   document.getElementById("jongsimje-form").style.display = "none";
+  document.getElementById("jj-edit-idx").value = "";
+}
+
+function editJongsimje(idx) {
+  const r = JONGSIMJE_DATA[idx];
+  document.getElementById("jj-site").value = r.현장명 || "";
+  document.getElementById("jj-date").value = r.배치일 || "";
+  document.getElementById("jj-note").value = r.비고 || "";
+  document.getElementById("jj-edit-idx").value = idx;
+  const setVals = (role, arr) => [0,1,2,3,4].forEach(i => {
+    const el = document.getElementById("jj-" + role + "-" + i);
+    if (el) el.value = (arr||[])[i] || "";
+  });
+  setVals("소장", r.현장소장);
+  setVals("공사", r.공사담당);
+  setVals("안전", r.안전담당);
+  setVals("품질", r.품질담당);
+  document.getElementById("jongsimje-form").style.display = "block";
+  document.getElementById("jongsimje-form").scrollIntoView({ behavior: "smooth" });
 }
 
 function saveJongsimje() {
@@ -2431,17 +2474,25 @@ function saveJongsimje() {
     return el ? el.value.trim() : "";
   }).filter(Boolean);
   const 배치일 = document.getElementById("jj-date").value;
-  JONGSIMJE_DATA.push({
-    현장명, 배치일,
+  const 비고 = document.getElementById("jj-note").value.trim();
+  const record = {
+    현장명, 배치일, 비고,
     현장소장: getVals("소장"),
     공사담당: getVals("공사"),
     안전담당: getVals("안전"),
     품질담당: getVals("품질"),
-  });
+  };
+  const editIdx = document.getElementById("jj-edit-idx").value;
+  if (editIdx !== "") {
+    JONGSIMJE_DATA[parseInt(editIdx)] = record; // 수정
+    toast("수정 완료", "success");
+  } else {
+    JONGSIMJE_DATA.push(record); // 신규 추가
+    toast("배치 등록 완료", "success");
+  }
   localStorage.setItem("jongsimje", JSON.stringify(JONGSIMJE_DATA));
   closeJongsimjeForm();
   loadJongsimje();
-  toast("배치 등록 완료", "success");
 }
 
 function deleteJongsimje(idx) {
@@ -2518,18 +2569,30 @@ function selectReportEngineer(id, label) {
   document.getElementById("report-engineer-select").value = id;
   document.getElementById("report-search-input").value = label;
   document.getElementById("report-search-results").innerHTML = "";
+  // 선택 즉시 자동 조회
+  loadReport();
 }
 
 async function loadReport() {
   const id = document.getElementById("report-engineer-select").value;
   if (!id) { toast("기술인을 선택하세요", "error"); return; }
+  // 즉시 로딩 표시
+  document.getElementById("report-area").innerHTML =
+    `<div style="text-align:center;padding:40px;color:var(--text2);">
+      <div class="spinner" style="margin:0 auto 12px;"></div>
+      <div>경력 데이터를 불러오는 중...</div>
+    </div>`;
+  document.getElementById("report-search-panel").style.display = "none";
+  document.getElementById("report-action-bar").style.display = "flex";
   try {
     const data = await api("getCareerReport", { engineerId: id });
     renderReport(data);
-    // 조회 후 검색 패널 숨기고 액션 바 표시
-    document.getElementById("report-search-panel").style.display = "none";
-    document.getElementById("report-action-bar").style.display = "flex";
-  } catch(e) { toast("로딩 실패: " + e.message, "error"); }
+  } catch(e) {
+    document.getElementById("report-area").innerHTML = "";
+    document.getElementById("report-search-panel").style.display = "block";
+    document.getElementById("report-action-bar").style.display = "none";
+    toast("로딩 실패: " + e.message, "error");
+  }
 }
 
 function resetReport() {
