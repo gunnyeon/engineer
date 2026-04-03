@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a56db"/>
+      <stop offset="100%" style="stop-color:#0f172a"/>
+    </linearGradient>
+  </defs>
+  <!-- 배경 원 -->
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+  <!-- 헬멧 -->
+  <ellipse cx="256" cy="210" rx="110" ry="75" fill="#f59e0b"/>
+  <rect x="146" y="210" width="220" height="28" rx="8" fill="#d97706"/>
+  <!-- 챙 -->
+  <rect x="120" y="222" width="272" height="18" rx="9" fill="#d97706"/>
+  <!-- 얼굴 -->
+  <ellipse cx="256" cy="290" rx="65" ry="72" fill="#fde68a"/>
+  <!-- 눈 -->
+  <circle cx="232" cy="278" r="8" fill="#1e293b"/>
+  <circle cx="280" cy="278" r="8" fill="#1e293b"/>
+  <!-- 입 -->
+  <path d="M236 308 Q256 320 276 308" stroke="#1e293b" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- 몸 (유니폼) -->
+  <path d="M170 370 Q185 340 256 340 Q327 340 342 370 L355 430 H157 Z" fill="#1a56db"/>
+  <!-- 가슴 배지 -->
+  <rect x="235" y="355" width="42" height="28" rx="5" fill="#ffffff" opacity="0.9"/>
+  <rect x="240" y="360" width="32" height="3" rx="1" fill="#1a56db"/>
+  <rect x="240" y="366" width="28" height="3" rx="1" fill="#1a56db"/>
+  <rect x="240" y="372" width="24" height="3" rx="1" fill="#1a56db"/>
+  <!-- 클립보드 -->
+  <rect x="310" y="320" width="55" height="70" rx="6" fill="#ffffff" opacity="0.95"/>
+  <rect x="325" y="313" width="25" height="14" rx="4" fill="#cbd5e1"/>
+  <rect x="318" y="335" width="39" height="3" rx="1" fill="#94a3b8"/>
+  <rect x="318" y="343" width="35" height="3" rx="1" fill="#94a3b8"/>
+  <rect x="318" y="351" width="39" height="3" rx="1" fill="#94a3b8"/>
+  <rect x="318" y="359" width="30" height="3" rx="1" fill="#94a3b8"/>
+  <!-- 왼팔 -->
+  <rect x="145" y="345" width="30" height="70" rx="12" fill="#1a56db"/>
+  <!-- 오른팔/클립보드 잡기 -->
+  <rect x="337" y="345" width="30" height="55" rx="12" fill="#1a56db"/>
+</svg>
