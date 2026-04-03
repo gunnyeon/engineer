@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -3066,12 +3069,29 @@ document.addEventListener("keydown", e => {
     document.querySelectorAll(".modal-overlay.open").forEach(m => m.classList.remove("open"));
   }
 });
-  // PWA 서비스워커 등록 (GitHub Pages에서만 동작)
+  // PWA 서비스워커 등록 (GitHub Pages 전용)
   try {
     if ("serviceWorker" in navigator && location.hostname.includes("github.io")) {
-      navigator.serviceWorker.register("./sw.js")
-        .then(reg => console.log("SW 등록:", reg.scope))
+      // 기존 캐시된 index.html 제거
+      if ("caches" in window) {
+        caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+      }
+      navigator.serviceWorker.register("./sw.js?v=202604030704")
+        .then(reg => {
+          reg.addEventListener("updatefound", () => {
+            const nw = reg.installing;
+            nw.addEventListener("statechange", () => {
+              if (nw.state === "installed" && navigator.serviceWorker.controller) {
+                window.location.reload();
+              }
+            });
+          });
+          reg.update();
+        })
         .catch(() => {});
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        window.location.reload();
+      });
     }
   } catch(e) {}
 
