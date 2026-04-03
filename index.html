@@ -601,19 +601,19 @@ tr:hover td { background: var(--surface); }
 
     <!-- 모바일 하단 내비게이션 -->
     <nav id="mobile-bottom-nav" style="display:none;">
-      <div class="mob-nav-item active" data-page="dashboard" onclick="showPage('dashboard');setMobNav('dashboard')">
+      <div class="mob-nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
         <span class="mob-icon">📊</span><span>대시보드</span>
       </div>
-      <div class="mob-nav-item" data-page="engineers" onclick="showPage('engineers');setMobNav('engineers')">
+      <div class="mob-nav-item" data-page="engineers" onclick="showPage('engineers')">
         <span class="mob-icon">👷</span><span>기술인</span>
       </div>
-      <div class="mob-nav-item" data-page="search" onclick="showPage('search');setMobNav('search')">
+      <div class="mob-nav-item" data-page="search" onclick="showPage('search')">
         <span class="mob-icon">🔍</span><span>검색</span>
       </div>
-      <div class="mob-nav-item" data-page="jongsimje" onclick="showPage('jongsimje');setMobNav('jongsimje')">
+      <div class="mob-nav-item" data-page="jongsimje" onclick="showPage('jongsimje')">
         <span class="mob-icon">🏗️</span><span>종심제</span>
       </div>
-      <div class="mob-nav-item" data-page="reports" onclick="showPage('reports');setMobNav('reports')">
+      <div class="mob-nav-item" data-page="reports" onclick="showPage('reports')">
         <span class="mob-icon">📄</span><span>증명서</span>
       </div>
     </nav>
@@ -1859,10 +1859,14 @@ window.addEventListener("load", () => {
 // ── 페이지 전환 ─────────────────────────────────
 function showPage(page) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  // 사이드바 nav-item active
   document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-  document.getElementById("page-" + page).classList.add("active");
-  const navItem = document.querySelector(`[data-page="${page}"]`);
-  if (navItem) navItem.classList.add("active");
+  const sideNavItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (sideNavItem) sideNavItem.classList.add("active");
+
+  // page 표시
+  const pageEl = document.getElementById("page-" + page);
+  if (pageEl) pageEl.classList.add("active");
 
   const titles = {
     dashboard: "대시보드", engineers: "기술인 목록",
