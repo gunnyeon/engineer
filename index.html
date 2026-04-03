@@ -603,6 +603,13 @@ tr:hover td { background: var(--surface); }
               <option value="">품질등급 전체</option>
               <option>특급</option><option>고급</option><option>중급</option><option>초급</option>
             </select>
+            <select class="form-control" id="eng-filter-cert" onchange="filterEngineers()" style="max-width:140px;" title="자격증 필터">
+              <option value="">자격증 전체</option>
+              <option value="기술사">기술사 보유</option>
+              <option value="기사">기사 보유</option>
+              <option value="any">자격증 보유</option>
+            </select>
+            <button class="btn btn-secondary" onclick="printEngineerList()" style="margin-left:auto;" title="목록 PDF 출력">🖨️ PDF 출력</button>
           </div>
           <div class="table-wrap">
             <table>
@@ -715,10 +722,11 @@ tr:hover td { background: var(--surface); }
           </div>
 
           <!-- 검색 버튼 -->
-          <div style="display:flex;gap:8px;align-items:center;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <button class="btn btn-primary" onclick="doSearch()">🔍 검색</button>
             <button class="btn btn-secondary" onclick="clearSearch()">초기화</button>
             <span id="search-count" style="font-size:12px;color:var(--text3);"></span>
+            <button class="btn btn-secondary" id="search-pdf-btn" onclick="printSearchResult()" style="display:none;margin-left:auto;">🖨️ PDF 출력</button>
           </div>
 
           <div id="search-results" class="table-wrap" style="margin-top:12px;">
@@ -733,7 +741,10 @@ tr:hover td { background: var(--surface); }
         <div class="card" style="margin-bottom:16px;">
           <div class="card-header">
             <div class="card-title">🏗️ 종심제 배치현황</div>
-            <button class="btn btn-primary" onclick="openJongsimjeForm()">+ 배치 등록</button>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-secondary" onclick="printJongsimje()">🖨️ PDF 출력</button>
+              <button class="btn btn-primary" onclick="openJongsimjeForm()">+ 배치 등록</button>
+            </div>
           </div>
           <!-- 등록 폼 -->
           <div id="jongsimje-form" style="display:none;padding:16px;border-bottom:1px solid var(--border);background:var(--surface);">
@@ -1807,6 +1818,118 @@ function showPage(page) {
   if (ov) ov.classList.remove("show");
 }
 
+// ── 공통 PDF 출력 헬퍼 ──────────────────────────────────────
+function openPrintWindow(title, bodyHtml) {
+  const w = window.open("", "_blank");
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="UTF-8"><title>${title}</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Malgun Gothic','Apple SD Gothic Neo',sans-serif; font-size: 11px; padding: 20px; color: #000; }
+      h2 { font-size: 16px; text-align: center; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #000; }
+      .meta { font-size: 10px; color: #666; text-align: right; margin-bottom: 12px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+      th { background: #1a56db; color: #fff; padding: 6px 8px; font-size: 10px; text-align: center; }
+      td { border: 1px solid #ddd; padding: 5px 7px; font-size: 10px; vertical-align: top; }
+      tr:nth-child(even) td { background: #f8fafc; }
+      .badge { display: inline-block; padding: 1px 5px; border-radius: 4px; font-size: 9px;
+               background: #dbeafe; color: #1e40af; margin: 1px; }
+      .badge-green { background: #d1fae5; color: #065f46; }
+      .footer { font-size: 9px; color: #999; text-align: right; margin-top: 12px; }
+      @page { size: A4 landscape; margin: 12mm; }
+      @media print { body { padding: 0; } }
+    </style>
+  </head><body>
+    ${bodyHtml}
+    <div class="footer">출력일: ${new Date().toLocaleDateString("ko-KR")} | 건축사업본부 기술인 경력관리 시스템</div>
+    <script>window.onload=function(){window.print();};<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+// ── 기술인 목록 PDF ──────────────────────────────────────────
+function printEngineerList() {
+  const data = ALL_ENGINEERS_FILTERED;
+  if (!data.length) { toast("출력할 데이터가 없습니다", "error"); return; }
+  const rows = data.map((e, i) => `
+    <tr>
+      <td style="text-align:center">${i+1}</td>
+      <td style="text-align:center;font-family:monospace">${e["사번"]||"-"}</td>
+      <td><strong>${e["이름"]}</strong></td>
+      <td>${e["소속부서"]||"-"}</td>
+      <td style="text-align:center">${e["직급"]||"-"}</td>
+      <td style="text-align:center">${e["건축분야등급"]||"-"}</td>
+      <td style="text-align:center">${e["품질분야등급"]||"-"}</td>
+      <td style="text-align:center">${e["총경력연수"]||0}년</td>
+      <td style="font-size:9px">${e["자격증목록"]
+        ? e["자격증목록"].split(", ").map(c=>`<span class="badge badge-green">${c}</span>`).join("")
+        : "-"}</td>
+      <td>${e["연락처"]||"-"}</td>
+    </tr>`).join("");
+  const body = `
+    <h2>기술인 목록</h2>
+    <div class="meta">총 ${data.length}명 | 출력일: ${new Date().toLocaleDateString("ko-KR")}</div>
+    <table>
+      <thead><tr><th>No</th><th>사번</th><th>이름</th><th>소속부서</th><th>직급</th><th>건축등급</th><th>품질등급</th><th>총경력</th><th>자격증</th><th>연락처</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  openPrintWindow("기술인 목록", body);
+}
+
+// ── 전문가 검색 결과 PDF ─────────────────────────────────────
+function printSearchResult() {
+  const data = window._searchResults || [];
+  if (!data.length) { toast("출력할 검색 결과가 없습니다", "error"); return; }
+  const rows = data.map((e, i) => `
+    <tr>
+      <td style="text-align:center">${i+1}</td>
+      <td style="text-align:center;font-family:monospace">${e["사번"]||"-"}</td>
+      <td><strong>${e["이름"]}</strong></td>
+      <td>${e["소속부서"]||"-"}</td>
+      <td style="text-align:center">${e["건축분야등급"]||"-"}</td>
+      <td style="text-align:center">${e["품질분야등급"]||"-"}</td>
+      <td style="text-align:center">${e["총경력연수"]||0}년</td>
+      <td style="text-align:center;color:#1a56db">${e["조건경력연수"]>0?e["조건경력연수"]+"년":"-"}</td>
+      <td style="font-size:9px">${e["자격증명목록"]
+        ? e["자격증명목록"].split(", ").map(c=>`<span class="badge badge-green">${c}</span>`).join("")
+        : "-"}</td>
+      <td>${e["연락처"]||"-"}</td>
+    </tr>`).join("");
+  const body = `
+    <h2>전문가 검색 결과</h2>
+    <div class="meta">총 ${data.length}명 | 출력일: ${new Date().toLocaleDateString("ko-KR")}</div>
+    <table>
+      <thead><tr><th>No</th><th>사번</th><th>이름</th><th>소속부서</th><th>건축등급</th><th>품질등급</th><th>총경력</th><th>조건경력</th><th>자격증</th><th>연락처</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  openPrintWindow("전문가 검색 결과", body);
+}
+
+// ── 종심제 배치현황 PDF ──────────────────────────────────────
+function printJongsimje() {
+  if (!JONGSIMJE_DATA.length) { toast("출력할 배치현황이 없습니다", "error"); return; }
+  const fmt = arr => (arr||[]).filter(Boolean).join(", ") || "-";
+  const rows = JONGSIMJE_DATA.map((r, i) => `
+    <tr>
+      <td style="text-align:center">${i+1}</td>
+      <td><strong>${r.현장명}</strong></td>
+      <td>${fmt(r.현장소장)}</td>
+      <td>${fmt(r.공사담당)}</td>
+      <td>${fmt(r.안전담당)}</td>
+      <td>${fmt(r.품질담당)}</td>
+      <td style="text-align:center">${r.배치일||"-"}</td>
+      <td>${r.비고||"-"}</td>
+    </tr>`).join("");
+  const body = `
+    <h2>종심제 배치현황</h2>
+    <div class="meta">총 ${JONGSIMJE_DATA.length}개 현장 | 출력일: ${new Date().toLocaleDateString("ko-KR")}</div>
+    <table>
+      <thead><tr><th>No</th><th>현장명</th><th>현장소장</th><th>공사담당</th><th>안전담당</th><th>품질담당</th><th>배치일</th><th>비고</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  openPrintWindow("종심제 배치현황", body);
+}
+
 function installPWA() {
   if (_deferredPrompt) {
     _deferredPrompt.prompt();
@@ -1976,6 +2099,12 @@ function filterEngineers() {
     const qualGrade = document.getElementById("eng-filter-qual-grade").value;
     if (archGrade && e["건축분야등급"] !== archGrade) return false;
     if (qualGrade && e["품질분야등급"] !== qualGrade) return false;
+    const certFilter = document.getElementById("eng-filter-cert").value;
+    if (certFilter) {
+      const certs = (e["자격증목록"] || "");
+      if (certFilter === "any" && !certs) return false;
+      else if (certFilter !== "any" && !certs.includes(certFilter)) return false;
+    }
     return true;
   });
   CURRENT_PAGE = 1;
@@ -2544,6 +2673,10 @@ async function doSearch() {
     // 검색 결과 카운트 표시
     const countEl = document.getElementById("search-count");
     if (countEl) countEl.textContent = `검색 결과: ${results.length}명`;
+    // PDF 버튼 표시
+    const pdfBtn = document.getElementById("search-pdf-btn");
+    if (pdfBtn) pdfBtn.style.display = results.length > 0 ? "inline-flex" : "none";
+    window._searchResults = results; // PDF 출력용
     window._searchResults = results;
   } catch(e) {
     area.innerHTML = `<div class="empty-state"><p style="color:var(--danger);">오류: ${e.message}</p></div>`;
