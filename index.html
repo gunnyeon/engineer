@@ -1066,7 +1066,7 @@ tr:hover td { background: var(--surface); }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ⚙️  설정 — Apps Script 배포 후 URL을 여기에 입력
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const API_URL = "https://script.google.com/macros/s/AKfycbxkz1gP6NryC73f1uaUB3N7oEANDv4YvKKf_ouNlVTniJ36oYj3QEJIrcAjcLRRDyVa0g/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzf8-O2I668IQUBGJGOkVXPhGxAPraVzM__Rl3b4DPZai6wJGHw7rIy7rjbIOVJQCfv5g/exec";
 // 예: "https://script.google.com/macros/s/AKfyc.../exec"
 
 // 분야별 기술등급 배지 렌더링
@@ -2213,44 +2213,36 @@ async function deleteExp(id) {
 // 검색 필터 옵션 동적 로딩 (경력상세 시트 기반)
 async function loadSearchFilters() {
   try {
-    const engineers = await api("getEngineers");
-    // 전체 경력 데이터 기반으로 공사유형, 담당업무 목록 수집
-    const projtypes = new Set();
-    const worktypes = new Set();
-    for (const eng of engineers) {
-      try {
-        const exps = await api("getExperiences", { engineerId: eng.ID });
-        exps.forEach(e => {
-          if (e["공사유형_대구분"]) projtypes.add(e["공사유형_대구분"]);
-          if (e["공사유형_소구분"]) projtypes.add(e["공사유형_소구분"]);
-          if (e["공사유형"]) projtypes.add(e["공사유형"]); // 구버전 호환
-          if (e["담당업무"]) worktypes.add(e["담당업무"]);
-        });
-      } catch(e) {}
-    }
-    // 대구분/소구분 분리 수집
-    const majorSet = new Set(), minorSet = new Set();
-    [...projtypes].forEach(v => {
-      if (v.includes("/")) { const [maj,min] = v.split("/"); majorSet.add(maj.trim()); if(min) minorSet.add(min.trim()); }
-      else majorSet.add(v);
-    });
+    // 전용 API로 한 번에 모든 필터 옵션 수집 (N+1 제거)
+    const filters = await api("getSearchFilters");
+
+    // 공사유형 대구분
     const ptMajorOpts = document.getElementById("s-projtype-major-options");
-    const ptMinorOpts = document.getElementById("s-projtype-minor-options");
-    if (ptMajorOpts) ptMajorOpts.innerHTML = [...majorSet].sort().map(v =>
+    if (ptMajorOpts) ptMajorOpts.innerHTML = (filters.공사유형_대구분||[]).map(v =>
       `<label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--text);">
         <input type="checkbox" class="pt-major-checkbox" value="${v}" onchange="updateProjtypeMajorLabel()"> ${v}</label>`).join("");
-    if (ptMinorOpts) ptMinorOpts.innerHTML = [...minorSet].sort().map(v =>
+
+    // 공사유형 소구분 (경력상세 M열 실제 데이터 기반)
+    const ptMinorOpts = document.getElementById("s-projtype-minor-options");
+    if (ptMinorOpts) ptMinorOpts.innerHTML = (filters.공사유형_소구분||[]).map(v =>
       `<label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--text);">
         <input type="checkbox" class="pt-minor-checkbox" value="${v}" onchange="updateProjtypeMinorLabel()"> ${v}</label>`).join("");
-    // 담당업무 체크박스 동적 생성
+
+    // 담당업무
     const wtOpts = document.getElementById("s-worktype-options");
-    wtOpts.innerHTML = [...worktypes].sort().map(v =>
+    if (wtOpts) wtOpts.innerHTML = (filters.담당업무||[]).map(v =>
       `<label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--text);">
-        <input type="checkbox" class="wt-checkbox" value="${v}" onchange="updateWorktypeLabel()">
-        ${v}
-      </label>`
-    ).join("");
-  } catch(e) {}
+        <input type="checkbox" class="wt-checkbox" value="${v}" onchange="updateWorktypeLabel()"> ${v}</label>`).join("");
+
+    // 책임정도 드롭다운 세팅
+    const chaegimSel = document.getElementById("s-chaegim");
+    if (chaegimSel && filters.책임정도 && filters.책임정도.length) {
+      chaegimSel.innerHTML = '<option value="">전체</option>' +
+        filters.책임정도.map(v => `<option value="${v}">${v}</option>`).join("");
+    }
+  } catch(e) {
+    console.error("필터 로딩 실패:", e);
+  }
 }
 
 // 공통 드롭다운 헬퍼
@@ -2360,7 +2352,11 @@ async function doSearch() {
           <td><strong>${e.총경력연수}년</strong></td>
           <td style="font-size:12px;color:var(--primary);">${e.조건경력연수 > 0 ? e.조건경력연수 + "년" : "-"}</td>
           <td style="font-size:12px;">${e._업무경력 || "-"}</td>
-          <td>${(e.자격증목록||[]).length > 0 ? `<span class="badge badge-green">✓ ${e.자격증목록.length}건</span>` : "-"}</td>
+          <td style="max-width:160px;font-size:11px;">
+            ${e.자격증명목록
+              ? e.자격증명목록.split(", ").map(c=>`<span class="badge badge-green" style="display:inline-block;margin:1px 2px;font-size:10px;">${c}</span>`).join("")
+              : "-"}
+          </td>
           <td>${e["연락처"] || "-"}</td>
           <td><button class="btn btn-secondary btn-sm" onclick="openEngineerDetail('${e.ID}');showPage('engineers')">상세</button></td>
         </tr>
