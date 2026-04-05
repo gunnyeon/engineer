@@ -1353,7 +1353,7 @@ tr:hover td { background: var(--surface); }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ⚙️  설정 — Apps Script 배포 후 URL을 여기에 입력
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const API_URL = "https://script.google.com/macros/s/AKfycbzytIsGUoB9tMrWAmHhm8q_mRBTlrgzUQ4kGn7v6WTBrOz7-Qabvb8qcUp1G08Bn_6gPg/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwcE3G95SrUzNsyz0TKUfqXlnqYlWo1ToGVU3mjz20Yc1YbOodoER_lYoOLU8hpc1JDGQ/exec";
 // 예: "https://script.google.com/macros/s/AKfyc.../exec"
 
 // 분야별 기술등급 배지 렌더링
@@ -1445,14 +1445,6 @@ async function doLogin() {
   btn.textContent = "로그인 중...";
   btn.disabled = true;
   err.style.display = "none";
-
-  // 허용된 계정 검증 (1차)
-  const ALLOWED = [{ id: "dongbu", pw: "dongbu02348" }, { id: "admin", pw: "admin1234" }];
-  const allowed = ALLOWED.find(a => a.id === id && a.pw === pw);
-  if (!allowed) {
-    showLoginError("아이디 또는 비밀번호가 올바르지 않습니다.");
-    btn.textContent = "로그인"; btn.disabled = false; return;
-  }
 
   try {
     const data = await apiPost("login", { username: id, password: pw });
