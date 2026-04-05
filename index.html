@@ -224,11 +224,12 @@ tr:hover td { background: var(--surface); }
 .search-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
 .search-bar .form-control { max-width: 240px; }
 /* 전문가 검색 필터 그리드: 데스크톱 3행3열 */
+/* 전문가 검색 필터: 항상 3열 고정 (데스크톱) */
 .search-filter-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px 16px;
-  margin-bottom: 16px;
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 12px 16px !important;
+  margin-bottom: 16px !important;
 }
 /* 기술인 목록 필터바: 한 줄 균등 분배 */
 .eng-filter-bar {
@@ -446,8 +447,11 @@ tr:hover td { background: var(--surface); }
   }
   .search-card:last-child { border-bottom: none; }
 
-  /* ── 전문가 검색 폼 ── */
-  .search-filter-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+  /* ── 전문가 검색 폼: 모바일 1열 ── */
+  .search-filter-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px 16px !important;
+  }
 
   /* ── 종심제 폼 ── */
   #page-jongsimje div[style*="grid-template-columns:1fr 1fr"] {
@@ -721,7 +725,7 @@ tr:hover td { background: var(--surface); }
           <div class="card-header"><div class="card-title">🔍 전문가 검색</div></div>
 
           <!-- 검색 필터 그리드: 데스크톱 3행3열, 모바일 1열 -->
-          <div class="search-filter-grid" id="search-filter-grid-wrap" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px 16px;margin-bottom:16px;">
+          <div class="search-filter-grid" id="search-filter-grid-wrap">
 
             <!-- 행1: 이름 / 공사유형 대구분 / 공사유형 소구분 -->
             <div class="form-group" style="margin:0;">
@@ -1927,7 +1931,7 @@ function showPage(page) {
   else if (page === "engineers") loadEngineers();
   else if (page === "jongsimje") loadJongsimje();
   else if (page === "reports") loadReportEngineers();
-  else if (page === "search") loadSearchFilters();
+  else if (page === "search") { loadSearchFilters(); setTimeout(applySearchGridLayout, 50); }
 
   // 모바일: 사이드바 닫기 + 하단내비 업데이트
   document.getElementById("sidebar").classList.remove("open");
@@ -2085,12 +2089,13 @@ function setMobNav(page) {
 function applySearchGridLayout() {
   const grid = document.getElementById("search-filter-grid-wrap");
   if (!grid) return;
+  // CSS로 처리하고 JS는 보조용으로만
   if (window.innerWidth <= 768) {
-    grid.style.gridTemplateColumns = "1fr";
-    grid.style.gap = "10px 16px";
+    grid.style.setProperty("grid-template-columns", "1fr", "important");
+    grid.style.setProperty("gap", "10px 16px", "important");
   } else {
-    grid.style.gridTemplateColumns = "repeat(3, 1fr)";
-    grid.style.gap = "12px 16px";
+    grid.style.setProperty("grid-template-columns", "repeat(3, 1fr)", "important");
+    grid.style.setProperty("gap", "12px 16px", "important");
   }
 }
 window.addEventListener("resize", applySearchGridLayout);
