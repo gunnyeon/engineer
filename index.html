@@ -780,8 +780,18 @@ tr:hover td { background: var(--surface); }
             </div>
 
             <div class="form-group" style="margin:0;">
-              <label class="form-label">최소 경력 <span style="font-size:10px;color:var(--text3);">(년, 조건 내 기간)</span></label>
-              <input type="number" class="form-control" id="s-minexp" placeholder="예: 3" min="0" max="50" step="0.5">
+              <label class="form-label">경력 범위 <span style="font-size:10px;color:var(--text3);">(년)</span></label>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <input type="number" class="form-control" id="s-minexp" placeholder="최소" min="0" max="50" step="1" style="width:calc(50% - 10px);">
+                <span style="color:var(--text3);font-size:12px;flex-shrink:0;">~</span>
+                <input type="number" class="form-control" id="s-maxexp" placeholder="최대" min="0" max="50" step="1" style="width:calc(50% - 10px);">
+              </div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+                <button type="button" onclick="setExpRange(0,5)"  style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);cursor:pointer;color:var(--text2);">~5년</button>
+                <button type="button" onclick="setExpRange(5,10)" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);cursor:pointer;color:var(--text2);">5~10년</button>
+                <button type="button" onclick="setExpRange(10,15)" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);cursor:pointer;color:var(--text2);">10~15년</button>
+                <button type="button" onclick="setExpRange(15,0)" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);cursor:pointer;color:var(--text2);">15년~</button>
+              </div>
             </div>
 
             <!-- 행3: 건축분야 등급 / 품질분야 등급 / 자격증 필터 -->
@@ -802,13 +812,17 @@ tr:hover td { background: var(--surface); }
             </div>
 
             <div class="form-group" style="margin:0;">
-              <label class="form-label">자격증 필터</label>
-              <select class="form-control" id="s-certtype">
-                <option value="">전체</option>
-                <option value="기술사">기술사 보유자</option>
-                <option value="기사">기사 보유자</option>
-                <option value="any">자격증 보유자</option>
-              </select>
+              <label class="form-label">자격증 <span style="font-size:10px;color:var(--text3);">(복수)</span></label>
+              <div id="s-certtype-wrap" style="border:1.5px solid var(--border);border-radius:7px;background:var(--bg2);position:relative;">
+                <div onclick="toggleDropdown('s-certtype')"
+                  style="padding:9px 12px;cursor:pointer;font-size:14px;display:flex;justify-content:space-between;align-items:center;user-select:none;">
+                  <span id="s-certtype-label" style="color:var(--text3);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90%">전체</span>
+                  <span style="font-size:10px;color:var(--text3);flex-shrink:0;">▼</span>
+                </div>
+                <div id="s-certtype-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg2);border:1.5px solid var(--border);border-top:none;border-radius:0 0 7px 7px;z-index:200;max-height:220px;overflow-y:auto;box-shadow:var(--shadow-md);">
+                  <div id="s-certtype-options" style="padding:4px 0;"></div>
+                </div>
+              </div>
             </div>
 
           </div>
@@ -2820,17 +2834,50 @@ async function saveExp() {
   if (!body.프로젝트명직접입력 || !body.참여시작일 || !body.참여종료일) {
     toast("프로젝트명, 시작일, 종료일은 필수입니다", "error"); return;
   }
+  const months = Math.round((new Date(body.참여종료일) - new Date(body.참여시작일)) / (1000*60*60*24*30.44));
+  const expDisplay = { ...body, 기간표시: formatDurationJS(months), 기간개월: months };
+
   try {
+    // 낙관적 업데이트: 즉시 로컬 캐시 반영 후 화면 갱신
+    const cached = cacheGet("experiences", CURRENT_ENG_ID) || [];
+    if (editId) {
+      const idx = cached.findIndex(e => e.ID === editId);
+      if (idx >= 0) cached[idx] = { ...cached[idx], ...expDisplay };
+    } else {
+      cached.push({ ID: "TEMP_" + Date.now(), ...expDisplay });
+    }
+    cacheSet("experiences", CURRENT_ENG_ID, cached);
+    closeExpForm();
+    _renderExpList(cached); // 즉시 화면 반영
+
+    // 백그라운드 API 저장
     if (editId) {
       await apiPost("updateExperience", { ...body, id: editId });
     } else {
-      await apiPost("addExperience", body);
+      const res = await apiPost("addExperience", body);
+      // 임시 ID를 실제 ID로 교체
+      const newCached = cacheGet("experiences", CURRENT_ENG_ID) || [];
+      const ti = newCached.findIndex(e => e.ID && e.ID.startsWith("TEMP_"));
+      if (ti >= 0) newCached[ti].ID = res.id;
+      cacheSet("experiences", CURRENT_ENG_ID, newCached);
     }
     toast("경력 저장 완료", "success");
-    cacheClear("experiences"); cacheClear("engineerDetail"); cacheClear("dashboard");
-    closeExpForm();
+    cacheClear("engineerDetail"); cacheClear("dashboard");
+    // 백그라운드에서 최신 데이터 동기화
     loadExpList(CURRENT_ENG_ID);
-  } catch(e) { toast("저장 실패: " + e.message, "error"); }
+  } catch(e) {
+    toast("저장 실패: " + e.message, "error");
+    cacheClear("experiences");
+    loadExpList(CURRENT_ENG_ID); // 실패 시 서버에서 재로드
+  }
+}
+
+function formatDurationJS(months) {
+  if (!months || months <= 0) return "0개월";
+  const y = Math.floor(months / 12), m = months % 12;
+  if (y === 0) return m + "개월";
+  if (m === 0) return y + "년";
+  return y + "년 " + m + "개월";
 }
 
 async function editExp(id) {
@@ -2914,6 +2961,14 @@ async function loadSearchFilters() {
         makeAllRow("chaegim-checkbox","s-chaegim-label","updateChaegimLabel") +
         filters.책임정도.map(v => makeRow("chaegim-checkbox", v, "updateChaegimLabel()")).join("");
     }
+
+    // 자격증 다중선택 드롭다운 세팅
+    const certOpts = document.getElementById("s-certtype-options");
+    if (certOpts && filters.자격증목록 && filters.자격증목록.length) {
+      certOpts.innerHTML =
+        makeAllRow("cert-checkbox","s-certtype-label","updateCertLabel") +
+        filters.자격증목록.map(v => makeRow("cert-checkbox", v, "updateCertLabel()")).join("");
+    }
   } catch(e) {
     console.error("필터 로딩 실패:", e);
   }
@@ -2974,6 +3029,21 @@ function updateChaegimLabel() {
 function getSelectedChaegim() {
   return [...document.querySelectorAll(".chaegim-checkbox:checked")].map(c => c.value);
 }
+function updateCertLabel() {
+  syncAllCheck("cert-checkbox");
+  const sel = getSelectedItems("cert-checkbox");
+  const lbl = document.getElementById("s-certtype-label");
+  if (lbl) {
+    lbl.textContent = sel.length ? (sel.length <= 2 ? sel.join(", ") : sel.length + "개 선택") : "전체";
+    lbl.style.color = sel.length ? "var(--text)" : "var(--text3)";
+  }
+}
+function setExpRange(min, max) {
+  const minEl = document.getElementById("s-minexp");
+  const maxEl = document.getElementById("s-maxexp");
+  if (minEl) minEl.value = min > 0 ? min : "";
+  if (maxEl) maxEl.value = max > 0 ? max : "";
+}
 
 // 담당업무 다중선택 헬퍼
 function toggleWorktypeDropdown() {
@@ -3001,7 +3071,7 @@ function updateWorktypeLabel() {
 }
 // 드롭다운 외부 클릭 시 닫기
 document.addEventListener("click", function(e) {
-  ["s-projtype-major","s-projtype-minor","s-worktype","s-chaegim"].forEach(id => {
+  ["s-projtype-major","s-projtype-minor","s-worktype","s-chaegim","s-certtype"].forEach(id => {
     const wrap = document.getElementById(id+"-wrap");
     if (wrap && !wrap.contains(e.target)) {
       const dd = document.getElementById(id+"-dropdown");
@@ -3026,7 +3096,9 @@ async function doSearch() {
     archGrade: document.getElementById("s-arch-grade").value,
     qualGrade: document.getElementById("s-qual-grade").value,
     minExp: document.getElementById("s-minexp").value,
-    certType: document.getElementById("s-certtype").value,
+    maxExp: document.getElementById("s-maxexp") ? document.getElementById("s-maxexp").value : "",
+    certNames: getSelectedItems("cert-checkbox").join(","),
+    certType: "",  // 다중선택으로 대체 (하위 호환)
     sortBy: "exp"
   };
   const area = document.getElementById("search-results");
@@ -3145,11 +3217,19 @@ function clearSearch() {
   });
 
   // ④ 라벨 텍스트 + 색상 초기화
+  // maxExp 초기화
+  const maxExpEl = document.getElementById("s-maxexp");
+  if (maxExpEl) maxExpEl.value = "";
+  // 자격증 체크박스 해제
+  document.querySelectorAll(".cert-checkbox").forEach(c => c.checked = false);
+  document.querySelectorAll(".all-check-cert-checkbox").forEach(c => c.checked = false);
+
   const labelReset = {
     "s-projtype-major-label": "전체",
     "s-projtype-minor-label": "전체",
     "s-worktype-label":       "전체 (선택 안함)",
-    "s-chaegim-label":        "전체"
+    "s-chaegim-label":        "전체",
+    "s-certtype-label":       "전체"
   };
   Object.entries(labelReset).forEach(([id, txt]) => {
     const el = document.getElementById(id);
@@ -3157,7 +3237,7 @@ function clearSearch() {
   });
 
   // ⑤ 열린 드롭다운 모두 닫기
-  ["s-projtype-major","s-projtype-minor","s-worktype","s-chaegim"].forEach(id => {
+  ["s-projtype-major","s-projtype-minor","s-worktype","s-chaegim","s-certtype"].forEach(id => {
     const dd = document.getElementById(id + "-dropdown");
     if (dd) dd.style.display = "none";
   });
