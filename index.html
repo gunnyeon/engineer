@@ -583,6 +583,9 @@ tr:hover td { background: var(--surface); }
       <a class="nav-item" data-page="jongsimje" onclick="showPage('jongsimje')">
         <span class="nav-icon">🏗️</span> 종심제 배치현황
       </a>
+      <a class="nav-item" onclick="window.open('https://dbconkr-my.sharepoint.com/:x:/g/personal/dbarchi_dongbu_co_kr/IQDRMSoPhljqTawda4l7D3aJAW9ORUw30sIK5dwCobnt8lg?e=gtcbCu','_blank')" style="cursor:pointer;">
+        <span class="nav-icon">👥</span> 퇴직인원 현황
+      </a>
       <a class="nav-item" data-page="reports" onclick="showPage('reports')">
         <span class="nav-icon">📄</span> 경력증명서
       </a>
@@ -1352,12 +1355,19 @@ const PAGE_SIZE = 15;
 
 // ── 캐시 ──────────────────────────────────────
 const CACHE = {
-  dashboard: null,
+  dashboard:     null,
   dashboardTime: 0,
-  engineerDetail: {},      // id → 데이터
-  experiences: {},          // engineerId → 데이터
-  certs: {},               // engineerId → 데이터
-  TTL: 60000               // 1분 캐시
+  engineers:     null,       // 전체 기술인 목록
+  engineersTime: 0,
+  engineerDetail: {},        // id → { data, time }
+  experiences: {},           // engineerId → { data, time }
+  certs: {},                 // engineerId → { data, time }
+  searchFilters: null,       // 검색 필터 목록
+  searchFiltersTime: 0,
+  TTL_SHORT:  120000,        // 2분 (자주 변경되는 데이터)
+  TTL_MEDIUM: 300000,        // 5분 (대시보드)
+  TTL_LONG:   600000,        // 10분 (검색 필터 등 정적 데이터)
+  TTL:        120000         // 기본 TTL
 };
 function cacheGet(key, id) {
   const store = id !== undefined ? CACHE[key] : null;
@@ -1371,20 +1381,44 @@ function cacheSet(key, id, data) {
   if (id !== undefined) CACHE[key][id] = { data, time: Date.now() };
 }
 function cacheClear(key) {
-  if (key === 'all') { CACHE.dashboard=null; CACHE.engineerDetail={}; CACHE.experiences={}; CACHE.certs={}; }
-  else if (key) CACHE[key] = typeof CACHE[key] === 'object' && !Array.isArray(CACHE[key]) ? {} : null;
+  if (key === 'all') {
+    CACHE.dashboard = null; CACHE.dashboardTime = 0;
+    CACHE.engineers = null; CACHE.engineersTime = 0;
+    CACHE.searchFilters = null; CACHE.searchFiltersTime = 0;
+    CACHE.engineerDetail = {}; CACHE.experiences = {}; CACHE.certs = {};
+  } else if (key === 'engineers') {
+    CACHE.engineers = null; CACHE.engineersTime = 0;
+  } else if (key === 'dashboard') {
+    CACHE.dashboard = null; CACHE.dashboardTime = 0;
+  } else if (key) {
+    CACHE[key] = typeof CACHE[key] === 'object' && !Array.isArray(CACHE[key]) ? {} : null;
+  }
 }
 
 // ── API 호출 ────────────────────────────────────
+// 진행 중인 GET 요청 dedup (동일 요청 중복 방지)
+const _pendingRequests = {};
+
 async function api(action, params = {}) {
   const url = new URL(API_URL);
   url.searchParams.set("action", action);
   url.searchParams.set("token", TOKEN);
-  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
-  const res = await fetch(url.toString());
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error || "API 오류");
-  return json.data;
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, String(v)));
+  const key = action + JSON.stringify(params);
+
+  // 동일 요청이 이미 진행 중이면 같은 Promise 반환 (트래픽 중복 방지)
+  if (_pendingRequests[key]) return _pendingRequests[key];
+
+  const promise = fetch(url.toString())
+    .then(res => res.json())
+    .then(json => {
+      if (!json.success) throw new Error(json.error || "API 오류");
+      return json.data;
+    })
+    .finally(() => { delete _pendingRequests[key]; });
+
+  _pendingRequests[key] = promise;
+  return promise;
 }
 
 async function apiPost(action, body = {}) {
@@ -1432,11 +1466,9 @@ async function doLogin() {
       Promise.all([
         api("getDashboard").then(d => { CACHE.dashboard = d; CACHE.dashboardTime = Date.now(); }).catch(()=>{}),
         api("getEngineers").then(raw => {
-          ALL_ENGINEERS = raw.sort((a,b) => {
-            const da = a["소속부서"]||"", db = b["소속부서"]||"";
-            if (da !== db) return da.localeCompare(db,"ko");
-            return (parseFloat(b["총경력연수"])||0)-(parseFloat(a["총경력연수"])||0);
-          });
+          ALL_ENGINEERS = _sortEngineers(raw);
+          CACHE.engineers = ALL_ENGINEERS;
+          CACHE.engineersTime = Date.now();
           ALL_ENGINEERS_FILTERED = [...ALL_ENGINEERS];
         }).catch(()=>{}),
         api("getJongsimje").then(raw => {
@@ -2385,15 +2417,30 @@ function renderTopEngineers(list) {
 }
 
 // ── 기술인 목록 ─────────────────────────────────
+function _sortEngineers(raw) {
+  return raw.sort((a, b) => {
+    const dA = a["소속부서"] || "", dB = b["소속부서"] || "";
+    if (dA !== dB) return dA.localeCompare(dB, "ko");
+    return (parseFloat(b["총경력연수"]) || 0) - (parseFloat(a["총경력연수"]) || 0);
+  });
+}
+
 async function loadEngineers() {
   try {
+    // 2분 프론트 캐시 활용
+    const cached = CACHE.engineers;
+    const expired = !cached || (Date.now() - CACHE.engineersTime > CACHE.TTL_SHORT);
+    if (cached && !expired) {
+      ALL_ENGINEERS = cached;
+      ALL_ENGINEERS_FILTERED = [...ALL_ENGINEERS];
+      populateDeptFilter();
+      renderEngineersTable();
+      return;
+    }
     const raw = await api("getEngineers");
-    ALL_ENGINEERS = raw.sort((a, b) => {
-      const deptA = a["소속부서"] || "";
-      const deptB = b["소속부서"] || "";
-      if (deptA !== deptB) return deptA.localeCompare(deptB, "ko");
-      return (parseFloat(b["총경력연수"]) || 0) - (parseFloat(a["총경력연수"]) || 0);
-    });
+    ALL_ENGINEERS = _sortEngineers(raw);
+    CACHE.engineers = ALL_ENGINEERS;
+    CACHE.engineersTime = Date.now();
     ALL_ENGINEERS_FILTERED = [...ALL_ENGINEERS];
     populateDeptFilter();
     renderEngineersTable();
@@ -2654,13 +2701,16 @@ async function saveEngineer() {
       toast("등록 완료", "success");
     }
     cacheClear("all");
+    CACHE.engineers = ALL_ENGINEERS;
+    CACHE.engineersTime = Date.now();
     closeModal("engineer-modal");
-    // 서버 재조회 없이 로컬 데이터로 즉시 렌더링
     ALL_ENGINEERS_FILTERED = [...ALL_ENGINEERS];
     populateDeptFilter();
     renderEngineersTable();
-    // 백그라운드에서 서버 데이터 동기화
-    setTimeout(() => loadEngineers(), 3000);
+    // 백그라운드에서 서버 데이터 동기화 (5초 후)
+    setTimeout(() => {
+      CACHE.engineersTime = 0; // 캐시 만료 처리 → 다음 loadEngineers 시 갱신
+    }, 5000);
   } catch(e) {
     toast("저장 실패: " + e.message, "error");
   }
@@ -2923,8 +2973,14 @@ async function deleteExp(id) {
 // 검색 필터 옵션 동적 로딩 (경력상세 시트 기반)
 async function loadSearchFilters() {
   try {
-    // 전용 API로 한 번에 모든 필터 옵션 수집 (N+1 제거)
-    const filters = await api("getSearchFilters");
+    // 검색 필터는 자주 바뀌지 않음 → 10분 프론트 캐시
+    let filters = CACHE.searchFilters;
+    const filtersExpired = !filters || (Date.now() - CACHE.searchFiltersTime > CACHE.TTL_LONG);
+    if (filtersExpired) {
+      filters = await api("getSearchFilters");
+      CACHE.searchFilters = filters;
+      CACHE.searchFiltersTime = Date.now();
+    }
 
     // ── 전체선택 행 생성 헬퍼 ──────────────────────────────────
     function makeAllRow(cls, labelId, updateFn) {
