@@ -835,7 +835,7 @@ tr:hover td { background: var(--surface); }
             <button class="btn btn-primary" onclick="doSearch()">🔍 검색</button>
             <button class="btn btn-secondary" onclick="clearSearch()">초기화</button>
             <span id="search-count" style="font-size:12px;color:var(--text3);"></span>
-            <div id="search-export-btns" style="display:none;margin-left:auto;display:none;gap:8px;align-items:center;" class="search-export-group">
+            <div id="search-export-btns" style="display:none;margin-left:auto;gap:8px;align-items:center;">
               <button class="btn btn-secondary" id="search-pdf-btn" onclick="printSearchResult()">🖨️ PDF 출력</button>
               <button class="btn btn-secondary" id="search-excel-btn" onclick="exportSearchExcel()" style="background:var(--success);color:#fff;border-color:var(--success);">📊 엑셀 내보내기</button>
             </div>
@@ -3357,8 +3357,10 @@ async function doSearch() {
     // PDF 버튼 표시
     const pdfBtn = document.getElementById("search-pdf-btn");
     if (pdfBtn) pdfBtn.style.display = results.length > 0 ? "inline-flex" : "none";
-    window._searchResults = results; // PDF 출력용
     window._searchResults = results;
+    // 버튼 표시/숨김
+    const exportBtns = document.getElementById("search-export-btns");
+    if (exportBtns) exportBtns.style.display = results.length ? "flex" : "none";
   } catch(e) {
     area.innerHTML = `<div class="empty-state"><p style="color:var(--danger);">오류: ${e.message}</p></div>`;
   }
